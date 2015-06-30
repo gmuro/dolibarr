@@ -976,7 +976,14 @@ class pdf_muscadet extends ModelePDFSuppliersOrders
 		$pdf->SetFont('', 'B', $default_font_size + 3);
 		$pdf->SetXY($posx,$posy);
 		$pdf->SetTextColor(0,0,60);
-		$title=$outputlangs->transnoentities("SupplierOrder");
+		if (! empty($object->date_commande))
+		{
+			$title=$outputlangs->transnoentities("SupplierOrder");
+		}
+		else
+		{
+			$title="Pedido de Cotización";
+		}
 		$pdf->MultiCell(100, 3, $title, '', 'R');
 
 		$pdf->SetFont('','B',$default_font_size);
@@ -1006,8 +1013,8 @@ class pdf_muscadet extends ModelePDFSuppliersOrders
 		}
 		else
 		{
-			$pdf->SetTextColor(255,0,0);
-			$pdf->MultiCell(100, 3, $outputlangs->transnoentities("OrderToProcess"), '', 'R');
+			$pdf->SetTextColor(0,0,60);
+			$pdf->MultiCell(100, 3, $outputlangs->transnoentities("OrderDate")." : " . date("d/m/y"), '', 'R');
 		}
 
 		$pdf->SetTextColor(0,0,60);
