@@ -1,7 +1,7 @@
 <?php
 /* Copyright (C) 2013-2014 Laurent Destailleur <eldy@users.sourceforge.net>
  * Copyright (C) 2014      Marcos García       <marcosgdf@gmail.com>
- * Copyright (C) 2015	   Alexandre Spangaro  <alexandre.spangaro@gmail.com>
+ * Copyright (C) 2015	   Alexandre Spangaro  <aspangaro.dolibarr@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -94,14 +94,14 @@ if (GETPOST("creation_sondage_date") || GETPOST("creation_sondage_autre"))
 			$_SESSION['champdatefin'] = dol_print_date($champdatefin,'dayrfc');
 			//$testdate = false;
 			//$_SESSION['champdatefin'] = dol_print_date($champdatefin,'dayrfc');
-			setEventMessage($langs->trans('ExpiredDate'),'warnings');
+			setEventMessage('ExpireDate','warnings');
 		}
 	}
 
 	if (! $testdate) {
 		setEventMessage($langs->trans('ErrorFieldRequired',$langs->transnoentitiesnoconv("ExpireDate")), 'errors');
 	}
-	
+
 	if ($titre && $testdate)
 	{
 		if (! empty($creation_sondage_date))
@@ -156,7 +156,7 @@ print '</tr>'."\n";
 
 print '<tr><td class="fieldrequired">'.  $langs->trans("ExpireDate")  .'</td><td>';
 
-print $form->select_date($champdatefin?$champdatefin:-1,'champdatefin','','','',"add",1,0);
+print $form->select_date($champdatefin?$champdatefin:-1,'champdatefin','','','',"add",1,0,1);
 
 print '</tr>'."\n";
 print '</table>'."\n";

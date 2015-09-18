@@ -18,7 +18,7 @@
  */
 
 /**
- *   	\file       htdocs/holiday/index.php
+ *   	\file       htdocs/holiday/list.php
  *		\ingroup    holiday
  *		\brief      List of holiday.
  */
@@ -276,13 +276,13 @@ print_liste_field_titre($langs->trans("Duration"),$_SERVER["PHP_SELF"],'','','',
 print_liste_field_titre($langs->trans("DateDebCP"),$_SERVER["PHP_SELF"],"cp.date_debut","",'','align="center"',$sortfield,$sortorder);
 print_liste_field_titre($langs->trans("DateFinCP"),$_SERVER["PHP_SELF"],"cp.date_fin","",'','align="center"',$sortfield,$sortorder);
 print_liste_field_titre($langs->trans("Status"),$_SERVER["PHP_SELF"],"cp.statut","",'','align="center"',$sortfield,$sortorder);
-print_liste_field_titre('');
+print_liste_field_titre('',$_SERVER["PHP_SELF"],"",'','','',$sortfield,$sortorder,'maxwidthsearch ');
 print "</tr>\n";
 
 // FILTRES
 print '<tr class="liste_titre">';
 print '<td class="liste_titre" align="left" width="50">';
-print '<input class="flat" size="4" type="text" name="search_ref" value="'.$search_ref.'">';
+print '<input class="flat" size="4" type="text" name="search_ref" value="'.dol_escape_htmltag($search_ref).'">';
 print '</td>';
 
 // DATE CREATE
@@ -395,7 +395,8 @@ if (! empty($holiday->holiday))
 		print '</td>';
 		print '<td align="center">'.dol_print_date($infos_CP['date_debut'],'day').'</td>';
 		print '<td align="center">'.dol_print_date($infos_CP['date_fin'],'day').'</td>';
-		print '<td align="right" colspan="2">'.$holidaystatic->LibStatut($infos_CP['statut'],5).'</td>';
+		print '<td align="right">'.$holidaystatic->LibStatut($infos_CP['statut'],5).'</td>';
+		print '<td></td>';
 		print '</tr>'."\n";
 
 	}

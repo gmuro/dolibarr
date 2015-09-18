@@ -31,6 +31,8 @@ $langs->load("admin");
 if (!$user->admin)
     accessforbidden();
 
+$error=0;
+
 
 /*
  * View
@@ -77,81 +79,123 @@ if (file_exists($xmlfile))
     $xml = simplexml_load_file($xmlfile);
     if ($xml)
     {
-        $ret = getFilesUpdated($xml->dolibarr_root_dir[0]);		// Fill array $file_list
-        print '<table class="noborder">';
-        print '<tr class="liste_titre">';
-        print '<td>' . $langs->trans("FilesMissing") . '</td>';
-        print '</tr>'."\n";
-        $var = true;
-        foreach ($file_list['missing'] as $file)
+        if (is_object($xml->dolibarr_htdocs_dir[0]))
         {
-            $var = !$var;
-            print '<tr ' . $bc[$var] . '>';
-            print '<td>'.$file.'</td>' . "\n";
-            print "</tr>\n";
+        	$file_list = array();
+            $ret = getFilesUpdated($file_list, $xml->dolibarr_htdocs_dir[0]);		// Fill array $file_list
+    
+            print '<table class="noborder">';
+            print '<tr class="liste_titre">';
+            print '<td>' . $langs->trans("FilesMissing") . '</td>';
+            print '<td align="center">' . $langs->trans("ExpectedChecksum") . '</td>';
+            print '</tr>'."\n";
+            $var = true;
+            $tmpfilelist = dol_sort_array($file_list['missing'], 'filename');
+            if (is_array($tmpfilelist) && count($tmpfilelist))
+            {
+    	        foreach ($tmpfilelist as $file)
+    	        {
+    	            $var = !$var;
+    	            print '<tr ' . $bc[$var] . '>';
+    	            print '<td>'.$file['filename'].'</td>' . "\n";
+    	            print '<td align="center">'.$file['expectedmd5'].'</td>' . "\n";
+    	            print "</tr>\n";
+    	        }
+            }
+            else 
+            {
+                print '<tr ' . $bc[false] . '><td colspan="2">'.$langs->trans("None").'</td></tr>';
+            }            
+            print '</table>';
+    
+            print '<br>';
+    
+            print '<table class="noborder">';
+            print '<tr class="liste_titre">';
+            print '<td>' . $langs->trans("FilesUpdated") . '</td>';
+            print '<td align="center">' . $langs->trans("ExpectedChecksum") . '</td>';
+            print '<td align="center">' . $langs->trans("CurrentChecksum") . '</td>';
+            print '<td align="right">' . $langs->trans("Size") . '</td>';
+            print '<td align="right">' . $langs->trans("DateModification") . '</td>';
+            print '</tr>'."\n";
+            $var = true;
+            $tmpfilelist = dol_sort_array($file_list['updated'], 'filename');
+            if (is_array($tmpfilelist) && count($tmpfilelist))
+            {
+    	        foreach ($tmpfilelist as $file)
+    	        {
+    	            $var = !$var;
+    	            print '<tr ' . $bc[$var] . '>';
+    	            print '<td>'.$file['filename'].'</td>' . "\n";
+    	            print '<td align="center">'.$file['expectedmd5'].'</td>' . "\n";
+    	            print '<td align="center">'.$file['md5'].'</td>' . "\n";
+    	            print '<td align="right">'.dol_print_size(dol_filesize(DOL_DOCUMENT_ROOT.'/'.$file['filename'])).'</td>' . "\n";
+    	            print '<td align="right">'.dol_print_date(dol_filemtime(DOL_DOCUMENT_ROOT.'/'.$file['filename']),'dayhour').'</td>' . "\n";
+    	            print "</tr>\n";
+    	        }
+            }
+            else 
+            {
+                print '<tr ' . $bc[false] . '><td colspan="5">'.$langs->trans("None").'</td></tr>';
+            }
+            print '</table>';
         }
-        print '</table>';
-
-        print '<br>';
-
-        print '<table class="noborder">';
-        print '<tr class="liste_titre">';
-        print '<td>' . $langs->trans("FilesUpdated") . '</td>';
-        print '<td align="right">' . $langs->trans("Size") . '</td>';
-        print '<td align="center">' . $langs->trans("DateModification") . '</td>';
-        print '</tr>'."\n";
-        $var = true;
-        foreach ($file_list['updated'] as $file)
+        else
         {
-            $var = !$var;
-            print '<tr ' . $bc[$var] . '>';
-            print '<td>'.$file.'</td>' . "\n";
-            print '<td align="right">'.dol_print_size(dol_filesize(DOL_DOCUMENT_ROOT.'/'.$file)).'</td>' . "\n";
-            print '<td align="center">'.dol_print_date(dol_filemtime(DOL_DOCUMENT_ROOT.'/'.$file),'dayhour').'</td>' . "\n";
-            print "</tr>\n";
+            print 'Error: Failed to found dolibarr_htdocs_dir into XML file '.$xmlfile;
+            $error++;
         }
-        print '</table>';
+    }
+    else
+    {
+        print 'Error: Failed to parse XML for input file '.$xmlfile;
+        $error++;
     }
 }
 else
 {
     print $langs->trans('XmlNotFound') . ': ' . $xmlfile;
+    $error++;
 }
 
 llxFooter();
 
 $db->close();
 
+exit($error);
+
 
 /**
- * Function to get list of updated or modified files
+ * Function to get list of updated or modified files.
+ * $file_list is used as global variable
  *
- * @param   SimpleXMLElement   $dir           SimpleXMLElement of files to test
- * @param   string   $path          Path of file
- * @return  array                   Array of filenames
+ * @param	array				$file_list	Array for response
+ * @param   SimpleXMLElement	$dir    	SimpleXMLElement of files to test
+ * @param   string   			$path   	Path of file
+ * @return  array               			Array of filenames
  */
-function getFilesUpdated(SimpleXMLElement $dir, $path = '')
+function getFilesUpdated(&$file_list, SimpleXMLElement $dir, $path = '')
 {
-    global $file_list;
     $exclude = 'install';
 
     foreach ($dir->md5file as $file)
     {
         $filename = $path.$file['name'];
 
-        if (preg_match('#'.$exclude.'#', $filename))
-            continue;
+        if (preg_match('#'.$exclude.'#', $filename)) continue;
 
-        if (!file_exists(DOL_DOCUMENT_ROOT.'/'.$filename)) {
-            $file_list['missing'][] = $filename;
-        } else {
+        if (!file_exists(DOL_DOCUMENT_ROOT.'/'.$filename))
+        {
+            $file_list['missing'][] = array('filename'=>$filename, 'expectedmd5'=>(string) $file);
+        }
+        else
+		{
             $md5_local = md5_file(DOL_DOCUMENT_ROOT.'/'.$filename);
-            if ($md5_local != (string) $file)
-                $file_list['updated'][] = $filename;
+            if ($md5_local != (string) $file) $file_list['updated'][] = array('filename'=>$filename, 'expectedmd5'=>(string) $file, 'md5'=>(string) $md5_local);
         }
     }
 
-    foreach ($dir->dir as $subdir)
-        getFilesUpdated($subdir, $path.$subdir['name'].'/');
-	return $file_list;
+    foreach ($dir->dir as $subdir) getFilesUpdated($file_list, $subdir, $path.$subdir['name'].'/');
+
+    return $file_list;
 }

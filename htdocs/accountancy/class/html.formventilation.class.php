@@ -1,7 +1,8 @@
 <?php
 /* Copyright (C) 2013-2014 Florian Henry        <florian.henry@open-concept.pro>
  * Copyright (C) 2013-2014 Olivier Geffroy      <jeff@jeffinfo.com>
- * Copyright (C) 2013-2014 Alexandre Spangaro   <alexandre.spangaro@gmail.com>
+ * Copyright (C) 2013-2014 Alexandre Spangaro   <aspangaro.dolibarr@gmail.com>
+ * Copyright (C) 2015      Ari Elbaz (elarifr)  <github@accedinfo.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -91,17 +92,20 @@ class FormVentilation extends Form
 	 *	@param	string	$htmlname		Name of field in html form
 	 *	@param	int		$showempty		Add an empty field
 	 *  @param	array	$event			Event options
+     *	@param	int		$select_in		$selectid value is a aa.rowid (0 default) or aa.account_number (1)
+     *	@param	int		$select_out		set value returned by select 0=rowid (default), 1=account_number
+     *	@param	int		$aabase			set accounting_account base class to display empty=all or from 1 to 8 will display only account beginning by
      *
 	 *	@return	string					String with HTML select
 	 */
-	function select_account($selectid, $htmlname = 'account', $showempty = 0, $event = array())
+	function select_account($selectid, $htmlname = 'account', $showempty = 0, $event = array(), $select_in = 0, $select_out = 0, $aabase = '')
 	{
 		global $conf;
 
 		$out = '';
 
 		$sql = "SELECT DISTINCT aa.account_number, aa.label, aa.rowid, aa.fk_pcg_version";
-		$sql .= " FROM " . MAIN_DB_PREFIX . "accountingaccount as aa";
+		$sql .= " FROM " . MAIN_DB_PREFIX . "accounting_account as aa";
 		$sql .= " INNER JOIN " . MAIN_DB_PREFIX . "accounting_system as asy ON aa.fk_pcg_version = asy.pcg_version";
 		$sql .= " AND asy.rowid = " . $conf->global->CHARTOFACCOUNTS;
 		$sql .= " AND aa.active = 1";
@@ -116,21 +120,26 @@ class FormVentilation extends Form
 			if ($showempty)
 				$out .= '<option value="-1"></option>';
 			$num = $this->db->num_rows($resql);
+            $trunclength = defined('ACCOUNTING_LENGTH_DESCRIPTION_ACCOUNT') ? $conf->global->ACCOUNTING_LENGTH_DESCRIPTION_ACCOUNT : '50';
 
 			$i = 0;
 			if ($num) {
 				while ( $i < $num ) {
 					$obj = $this->db->fetch_object($resql);
 					$label = $obj->account_number . ' - ' . $obj->label;
-
-					// Remember guy's we store in database llx_facturedet the rowid of accountingaccount and not the account_number
+					$label = dol_trunc($label, $trunclength);
+					if ($select_in == 0 )  $select_value_in =  $obj->rowid;
+					if ($select_in == 1 )  $select_value_in =  $obj->account_number;
+					if ($select_out == 0 ) $select_value_out = $obj->rowid;
+					if ($select_out == 1 ) $select_value_out = $obj->account_number;
+					// Remember guy's we store in database llx_facturedet the rowid of accounting_account and not the account_number
 					// Because same account_number can be share between different accounting_system and do have the same meaning
-					if (($selectid != '') && $selectid == $obj->rowid) {
+					if (($selectid != '') && $selectid == $select_value_in) {
 						// $out .= '<option value="' . $obj->account_number . '" selected>' . $label . '</option>';
-						$out .= '<option value="' . $obj->rowid . '" selected>' . $label . '</option>';
+						$out .= '<option value="' . $select_value_out . '" selected>' . $label . '</option>';
 					} else {
 						// $out .= '<option value="' . $obj->account_number . '">' . $label . '</option>';
-						$out .= '<option value="' . $obj->rowid . '">' . $label . '</option>';
+						$out .= '<option value="' . $select_value_out . '">' . $label . '</option>';
 					}
 					$i ++;
 				}
@@ -162,7 +171,7 @@ class FormVentilation extends Form
 		$out = '';
 
 		$sql = "SELECT DISTINCT pcg_type ";
-		$sql .= " FROM " . MAIN_DB_PREFIX . "accountingaccount as aa";
+		$sql .= " FROM " . MAIN_DB_PREFIX . "accounting_account as aa";
 		$sql .= " INNER JOIN " . MAIN_DB_PREFIX . "accounting_system as asy ON aa.fk_pcg_version = asy.pcg_version";
 		$sql .= " AND asy.rowid = " . $conf->global->CHARTOFACCOUNTS;
 		$sql .= " ORDER BY pcg_type";
@@ -218,7 +227,7 @@ class FormVentilation extends Form
 		$out = '';
 
 		$sql = "SELECT DISTINCT pcg_subtype ";
-		$sql .= " FROM " . MAIN_DB_PREFIX . "accountingaccount as aa";
+		$sql .= " FROM " . MAIN_DB_PREFIX . "accounting_account as aa";
 		$sql .= " INNER JOIN " . MAIN_DB_PREFIX . "accounting_system as asy ON aa.fk_pcg_version = asy.pcg_version";
 		$sql .= " AND asy.rowid = " . $conf->global->CHARTOFACCOUNTS;
 		$sql .= " ORDER BY pcg_subtype";

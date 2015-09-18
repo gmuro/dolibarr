@@ -258,7 +258,7 @@ textarea.cke_source:focus
 input, input.flat, textarea, textarea.flat, form.flat select, select, select.flat, .dataTables_length label select {
     font-size: <?php print $fontsize ?>px;
     font-family: <?php print $fontlist ?>;
-    background: #FDFDFD;
+    background: #FFF;
     color: #111;
     border: 1px solid #C0C0C0;
     margin: 0px 0px 0px 0px;
@@ -404,7 +404,9 @@ th .button {
 	-webkit-border-radius:0px !important;
 	border-radius:0px !important;
 }
-
+.maxwidthsearch {		/* Max width of column with the search picto */
+	width: 54px;
+}
 .valignmiddle {
 	vertical-align: middle;
 }
@@ -416,6 +418,7 @@ textarea.centpercent {
 }
 .center {
     text-align: center;
+    margin: 0px auto;
 }
 .left {
 	text-align: <?php print $left; ?>;
@@ -532,12 +535,15 @@ td.showDragHandle {
 /* ============================================================================== */
 
 #id-container {
-	margin-top: 12px;
-	margin-bottom: 8px;
+	/* margin-top: 12px;
+	margin-bottom: 8px; */
 	display: table;
 	table-layout: fixed;
 }
 #id-right, #id-left {
+	padding-top: 12px;
+	padding-bottom: 8px;
+
 	display: table-cell;
 	float: none;
 	vertical-align: top;
@@ -600,7 +606,10 @@ div.ficheaddleft {
 	padding-top: 1px;
 	padding-bottom: 1px;
 }
-
+div.attacharea {
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
 
 /* ============================================================================== */
 /* Menu top et 1ere ligne tableau                                                 */
@@ -929,8 +938,7 @@ form#login {
 	text-shadow: 1px 1px 1px #FFF;
 }
 .login_table {
-	margin-left: 10px;
-	margin-right: 10px;
+	margin: 0px auto;  /* Center */
 	padding-left:6px;
 	padding-right:6px;
 	padding-top:16px;
@@ -946,18 +954,13 @@ form#login {
     -webkit-box-shadow: 3px 2px 20px #CCC;
     box-shadow: 3px 2px 20px #CCC;*/
 
-	border-radius: 8px;
+	border-radius: 5px;
 	border:solid 1px rgba(80,80,80,.4);
 
 	border-top:solid 1px f8f8f8;
-	/*
-	background-color: #f8f8f8;
-	background-image: -o-linear-gradient(top, rgba(250,250,250,.6) 0%, rgba(192,192,192,.3) 100%);
-	background-image: -moz-linear-gradient(top, rgba(250,250,250,.6) 0%, rgba(192,192,192,.3) 100%);
-	background-image: -webkit-linear-gradient(top, rgba(250,250,250,.6) 0%, rgba(192,192,192,.3) 100%);
-	background-image: -ms-linear-gradient(top, rgba(250,250,250,.6) 0%, rgba(192,192,192,.3) 100%);
-	background-image: linear-gradient(top, rgba(250,250,250,.6) 0%, rgba(192,192,192,.3) 100%);
-	*/
+}
+.login_main_message {
+	text-align: center;
 }
 div#login_left, div#login_right {
 	display: inline-block;
@@ -1113,7 +1116,7 @@ div.blockvmenupair, div.blockvmenuimpair, div.blockvmenubookmarks
 
 	background: rgb(<?php echo $colorbackvmenu1; ?>);
 
-    border-left: 1px solid #AAA;
+    /*border-left: 1px solid #AAA;
     border-right: 1px solid #BBB;
     border-bottom: 1px solid #BBB;
     border-top: 1px solid #BBB;
@@ -1122,6 +1125,7 @@ div.blockvmenupair, div.blockvmenuimpair, div.blockvmenubookmarks
     -moz-box-shadow: 3px 3px 4px #DDD;
     -webkit-box-shadow: 3px 3px 4px #DDD;
     box-shadow: 3px 3px 4px #DDD;
+    */
 }
 
 div.blockvmenusearch
@@ -1136,7 +1140,7 @@ div.blockvmenusearch
     padding-bottom: 3px;
     margin: 1px 0px 8px 2px;
 	background: rgb(<?php echo $colorbackvmenu2; ?>);
-
+/*
     border-left: 1px solid #AAA;
     border-right: 1px solid #CCC;
     border-bottom: 1px solid #CCC;
@@ -1146,6 +1150,7 @@ div.blockvmenusearch
     -moz-box-shadow: 3px 3px 4px #DDD;
     -webkit-box-shadow: 3px 3px 4px #DDD;
     box-shadow: 3px 3px 4px #DDD;
+    */
 }
 
 div.blockvmenusearch > form > div {
@@ -1891,7 +1896,7 @@ div.tabBar div.border .table-border-row, div.tabBar div.border .table-key-border
 }
 div .tdtop {
     vertical-align: top;
-	padding-top: 5px;
+	padding-top: 5px !important;
 	padding-bottom: 0px;
 }
 
@@ -2258,6 +2263,9 @@ div.liste_titre .tagtd {
 	vertical-align: middle;
 }
 div.liste_titre {
+	box-shadow: 2px 2px 4px #CCC;
+}
+div.liste_titre {
 	min-height: 26px !important;	/* We cant use height because it's a div and it should be higher if content is more. but min-height doe not work either for div */
 
 	padding-left: 3px;
@@ -2545,6 +2553,8 @@ a.impayee:hover { font-weight: bold; color: #550000; }
 .legendColorBox, .legendLabel { border: none !important; }
 div.dolgraph div.legend, div.dolgraph div.legend div { background-color: rgba(255,255,255,0) !important; }
 div.dolgraph div.legend table tbody tr { height: auto; }
+td.legendColorBox { padding: 2px 2px 2px 0 !important; }
+td.legendLabel { padding: 2px 2px 2px 0 !important; }
 
 .photo {
 	border: 0px;
@@ -2554,9 +2564,9 @@ div.dolgraph div.legend table tbody tr { height: auto; }
 	margin-top: 10px;
 }
 .photowithmargin {
-	-webkit-box-shadow: 0px 0px 3px #777;
+/*	-webkit-box-shadow: 0px 0px 3px #777;
 	-moz-box-shadow: 0px 0px 3px #777;
-	box-shadow: 0px 0px 3px #777;
+	box-shadow: 0px 0px 3px #777;*/
 }
 .photointoolitp {
 	margin-top: 6px;
@@ -2815,6 +2825,8 @@ table.cal_month    { border-spacing: 0px; }
 .cal_today_peruser_peruserleft { background: #FDFDF0; border-left: solid 3px #6C7C7B; border-right: solid 1px #E0E0E0; border-bottom: solid 1px #E0E0E0; padding-<?php print $left; ?>: 2px; padding-<?php print $right; ?>: 1px; padding-top: 0px; padding-bottom: 0px; }
 .cal_past          { }
 .cal_peruser       { padding: 0px; }
+.cal_impair        { background: #F8F8F8; }
+.cal_today_peruser_impair { background: #F8F8F0; }
 .peruser_busy      { background: #CC8888; }
 .peruser_notbusy   { background: #EEDDDD; opacity: 0.5; }
 table.cal_event    { border: none; border-collapse: collapse; margin-bottom: 1px; -webkit-border-radius: 6px; border-radius: 6px;

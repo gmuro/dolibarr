@@ -498,15 +498,14 @@ if ($resql)
     print "</tr>\n";
 
     // Lignes des champs de filtre
-
     print '<tr class="liste_titre">';
     print '<td class="liste_titre" valign="right">';
-    print $langs->trans('Month').': <input class="flat" type="text" size="2" maxlength="2" name="month" value="'.$month.'">';
+    print '<input class="flat" type="text" size="2" maxlength="2" placeholder="'.dol_escape_htmltag($langs->trans("Month")).'" name="month" value="'.$month.'">';
     if (empty($conf->productbatch->enabled)) print '&nbsp;';
-    else print '<br>';
-    print $langs->trans('Year').': ';
+    //else print '<br>';
     $syear = $year?$year:-1;
-    $formother->select_year($syear,'year',1, 20, 5);
+    print '<input class="flat" type="text" size="2" maxlength="4" placeholder="'.dol_escape_htmltag($langs->trans("Year")).'" name="year" value="'.($syear > 0 ? $syear : '').'">';
+    //print $formother->selectyear($syear,'year',1, 20, 5);
     print '</td>';
     // Product Ref
     print '<td class="liste_titre" align="left">';
@@ -549,7 +548,6 @@ if ($resql)
     print '<input type="image" class="liste_titre" src="'.img_picto($langs->trans("Search"),'searchclear.png','','',1).'" name="button_removefilter" value="'.dol_escape_htmltag($langs->trans("RemoveFilter")).'" title="'.dol_escape_htmltag($langs->trans("RemoveFilter")).'">';
     print '</td>';
     print "</tr>\n";
-    print '</form>';
 
     $arrayofuniqueproduct=array();
 
@@ -621,7 +619,7 @@ if ($resql)
     }
     $db->free($resql);
 
-    print "</table><br>";
+    print "</table></form><br>";
 
     // Add number of product when there is a filter on period
     if (count($arrayofuniqueproduct) == 1 && is_numeric($year))

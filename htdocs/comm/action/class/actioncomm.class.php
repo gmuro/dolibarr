@@ -110,8 +110,8 @@ class ActionComm extends CommonObject
     var $note;          // Description
 
 	var $userassigned = array();	// Array of user ids
-    var $userownerid;		// Id of user owner
-    var $userdoneid;	// Id of user done
+    var $userownerid;	// Id of user owner = fk_user_action into table
+    var $userdoneid;	// Id of user done (deprecated)
 
     /**
      * Object user of owner
@@ -456,11 +456,12 @@ class ActionComm extends CommonObject
     /**
      *    Load object from database
      *
-     *    @param	int		$id     Id of action to get
-     *    @param	string	$ref    Ref of action to get
-     *    @return	int				<0 if KO, >0 if OK
+     *    @param	int		$id     	Id of action to get
+     *    @param	string	$ref    	Ref of action to get
+     *    @param	string	$ref_ext	Ref ext to get
+     *    @return	int					<0 if KO, >0 if OK
      */
-    function fetch($id, $ref='')
+    function fetch($id, $ref='',$ref_ext='')
     {
         global $langs;
 
@@ -484,11 +485,12 @@ class ActionComm extends CommonObject
         $sql.= " s.nom as socname,";
         $sql.= " u.firstname, u.lastname as lastname";
         $sql.= " FROM ".MAIN_DB_PREFIX."actioncomm as a ";
-        $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."c_actioncomm as c ON a.fk_action=c.id ";
+        $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."c_actioncomm as c ON a.fk_action=c.id ";
         $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."user as u on u.rowid = a.fk_user_author";
         $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."societe as s on s.rowid = a.fk_soc";
         $sql.= " WHERE ";
-        if ($ref) $sql.= " a.id=".$ref;		// No field ref, we use id
+        if ($ref) $sql.= " a.id=".$ref;											// No field ref, we use id
+        elseif ($ref_ext) $sql.= " a.ref_ext='".$this->db->escape($ref_ext)."'";
         else $sql.= " a.id=".$id;
 
         dol_syslog(get_class($this)."::fetch", LOG_DEBUG);
@@ -880,7 +882,7 @@ class ActionComm extends CommonObject
         $resql=$this->db->query($sql);
         if ($resql)
         {
-	        $now = dol_now();
+            $agenda_static = new ActionComm($this->db);
 
 	        $response = new WorkboardResponse();
 	        $response->warning_delay = $conf->actions->warning_delay/60/60/24;
@@ -893,7 +895,9 @@ class ActionComm extends CommonObject
             {
 	            $response->nbtodo++;
 
-                if (isset($obj->dp) && $this->db->jdate($obj->dp) < ($now - $conf->actions->warning_delay)) {
+                $agenda_static->datep = $this->db->jdate($obj->dp);
+
+                if ($agenda_static->hasDelay()) {
 	                $response->nbtodolate++;
                 }
             }
@@ -1039,9 +1043,9 @@ class ActionComm extends CommonObject
      *      Use $this->id, $this->type_code, $this->label and $this->type_label
      *
      * 		@param	int		$withpicto			0=No picto, 1=Include picto into link, 2=Only picto
-     *		@param	int		$maxlength			Nombre de caracteres max dans libelle
+     *		@param	int		$maxlength			Max number of charaters into label. If negative, use the ref as label.
      *		@param	string	$classname			Force style class on a link
-     * 		@param	string	$option				''=Link to action,'birthday'=Link to contact
+     * 		@param	string	$option				''=Link to action, 'birthday'=Link to contact
      * 		@param	int		$overwritepicto		1=Overwrite picto
      *		@return	string						Chaine avec URL
      */
@@ -1073,7 +1077,8 @@ class ActionComm extends CommonObject
         {
             $libelle=(empty($this->libelle)?$label:$this->libelle.(($label && $label != $this->libelle)?' '.$label:''));
             if (! empty($conf->global->AGENDA_USE_EVENT_TYPE) && empty($libelle)) $libelle=($langs->transnoentities("Action".$this->type_code) != "Action".$this->type_code)?$langs->transnoentities("Action".$this->type_code):$this->type_label;
-            $libelleshort=dol_trunc($libelle,$maxlength);
+            if ($maxlength < 0) $libelleshort=$this->ref;
+            else $libelleshort=dol_trunc($libelle,$maxlength);
         }
 
         if ($withpicto)
@@ -1357,6 +1362,20 @@ class ActionComm extends CommonObject
 
 		return CommonObject::commonReplaceThirdparty($db, $origin_id, $dest_id, $tables);
 	}
+
+    /**
+     * Is the action delayed?
+     *
+     * @return bool
+     */
+    public function hasDelay()
+    {
+        global $conf;
+
+        $now = dol_now();
+
+        return $this->datep && ($this->datep < ($now - $conf->actions->warning_delay));
+    }
 
 }
 

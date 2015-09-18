@@ -5,7 +5,7 @@
  * Copyright (C) 2005-2012 Regis Houssin        <regis.houssin@capnetworks.com>
  * Copyright (C) 2007      Franky Van Liedekerke <franky.van.liedekerke@telenet.be>
  * Copyright (C) 2013      Florian Henry		  	<florian.henry@open-concept.pro>
- * Copyright (C) 2013      Alexandre Spangaro 	<alexandre.spangaro@gmail.com>
+ * Copyright (C) 2013      Alexandre Spangaro 	<aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2014      Juanjo Menent	 	<jmenent@2byte.es>
  * Copyright (C) 2015       Jean-François Ferry		<jfefe@aternatik.fr>
  *
@@ -635,18 +635,18 @@ else
             $form=new Form($db);
             if ($object->birthday)
             {
-                print $form->select_date($object->birthday,'birthday',0,0,0,"perso");
+                print $form->select_date($object->birthday,'birthday',0,0,0,"perso", 1, 0, 1);
             }
             else
             {
-                print $form->select_date('','birthday',0,0,1,"perso");
+                print $form->select_date('','birthday',0,0,1,"perso", 1, 0, 1);
             }
             print '</td>';
 
             print '<td colspan="2"><label for="birthday_alert">'.$langs->trans("Alert").'</label>: ';
             if ($object->birthday_alert)
             {
-                print '<input type="checkbox" name="birthday_alert" id="birthday_aler" checked></td>';
+                print '<input type="checkbox" name="birthday_alert" id="birthday_alert" checked></td>';
             }
             else
             {
@@ -809,7 +809,7 @@ else
             print '</tr>';
 
             // Jabberid
-            print '<tr><td><label for="jabberid">'.$langs->trans("Jabberid").'</label></td>';
+            print '<tr><td><label for="jabberid">'.$langs->trans("IM").'</label></td>';
 	        print '<td><input name="jabberid" id="jabberid" type="text" size="40" maxlength="80" value="'.(isset($_POST["jabberid"])?$_POST["jabberid"]:$object->jabberid).'"></td>';
             if (! empty($conf->mailing->enabled))
             {
@@ -1151,12 +1151,12 @@ else
 
         print '<tr><td>';
         print $langs->trans("ExportCardToFormat").'</td><td colspan="3">';
-		print '<a href="'.DOL_URL_ROOT.'/contact/vcard.php?id='.$contact->id.'">';
+		print '<a href="'.DOL_URL_ROOT.'/contact/vcard.php?id='.$object->id.'">';
 		print img_picto($langs->trans("VCard"),'vcard.png').' ';
 		print $langs->trans("VCard");
 		print '</a>';
         print '</td></tr>';
-        
+
         print "</table>";
 
         print dol_fiche_end();

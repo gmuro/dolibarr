@@ -108,12 +108,12 @@ if ($action == 'assign')
     }
     else
     {
-    	setEventMessages($langs->trans("ErrorFieldRequired", $langs->transnoentitiesnoconv("Task")), '', 'errors');
+    	setEventMessages($langs->transnoentitiesnoconv("ErrorFieldRequired", $langs->transnoentitiesnoconv("Task")), '', 'errors');
     	$error++;
     }
     if (! GETPOST('type'))
     {
-    	setEventMessages($langs->trans("ErrorFieldRequired", $langs->transnoentitiesnoconv("Type")), '', 'errors');
+    	setEventMessages($langs->transnoentitiesnoconv("ErrorFieldRequired", $langs->transnoentitiesnoconv("Type")), '', 'errors');
     	$error++;
     }
     if (! $error)
@@ -124,6 +124,7 @@ if ($action == 'assign')
 
 	if ($result < 0)
 	{
+		$error++;
 		if ($object->error == 'DB_ERROR_RECORD_ALREADY_EXISTS')
 		{
 			$langs->load("errors");
@@ -133,6 +134,11 @@ if ($action == 'assign')
 		{
 			setEventMessages($object->error, $object->errors, 'errors');
 		}
+	}
+
+	if (! $error)
+	{
+		setEventMessages("TaskAssignedToEnterTime", null);
 	}
 
 	$action='';
@@ -230,6 +236,7 @@ llxHeader("",$title,"",'','','',array('/core/js/timesheet.js'));
 
 print_barre_liste($title, $page, $_SERVER["PHP_SELF"], "", $sortfield, $sortorder, "", $num, '', 'title_project');
 
+$param=($mode?'&amp;mode='.$mode:'');
 
 // Show navigation bar
 $nav ="<a href=\"?year=".$prev_year."&amp;month=".$prev_month."&amp;day=".$prev_day.$param."\">".img_previous($langs->trans("Previous"))."</a>\n";
@@ -376,7 +383,7 @@ print '<input type="hidden" name="year" value="'.$year.'">';
 print '<input type="hidden" name="month" value="'.$month.'">';
 print '<input type="hidden" name="day" value="'.$day.'">';
 print $langs->trans("AssignTaskToMe").'<br>';
-$formproject->select_task($socid?$socid:-1, $taskid, 'taskid');
+$formproject->selectTasks($socid?$socid:-1, $taskid, 'taskid', 32, 0, 1, 1);
 print $formcompany->selectTypeContact($object, '', 'type','internal','rowid', 1);
 print '<input type="submit" class="button" name="submit" value="'.$langs->trans("AssignTask").'">';
 print '</form>';

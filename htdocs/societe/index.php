@@ -146,7 +146,7 @@ if (! empty($conf->use_javascript_ajax) && ((round($third['prospect'])?1:0)+(rou
     if (! empty($conf->fournisseur->enabled) && empty($conf->global->SOCIETE_DISABLE_SUPPLIERS_STATS)) $dataseries[]=array('label'=>$langs->trans("Suppliers"),'data'=>round($third['supplier']));
     if (! empty($conf->societe->enabled))                                                              $dataseries[]=array('label'=>$langs->trans("Others"),'data'=>round($third['other']));
     $data=array('series'=>$dataseries);
-    dol_print_graph('stats',300,180,$data,1,'pie',0);
+    dol_print_graph('stats',300,180,$data,1,'pie',0,'',0);
     print '</td></tr>'."\n";
 }
 else
@@ -181,14 +181,17 @@ if (! empty($conf->categorie->enabled) && ! empty($conf->global->CATEGORY_GRAPHS
 {
 	require_once DOL_DOCUMENT_ROOT.'/categories/class/categorie.class.php';
 	$elementtype = 'societe';
+
 	print '<br>';
-	print '<table class="noborder" width="100%">';
+
+	print '<table class="noborder nohover" width="100%">';
 	print '<tr class="liste_titre"><th colspan="2">'.$langs->trans("Categories").'</th></tr>';
 	print '<tr '.$bc[0].'><td align="center" colspan="2">';
 	$sql = "SELECT c.label, count(*) as nb";
 	$sql.= " FROM ".MAIN_DB_PREFIX."categorie_societe as cs";
 	$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."categorie as c ON cs.fk_categorie = c.rowid";
 	$sql.= " WHERE c.type = 2";
+	if (! is_numeric($conf->global->CATEGORY_GRAPHSTATS_ON_THIRDPARTIES)) $sql.= " AND c.label like '".$db->escape($conf->global->CATEGORY_GRAPHSTATS_ON_THIRDPARTIES)."'";
 	$sql.= " AND c.entity IN (".getEntity('category',1).")";
 	$sql.= " GROUP BY c.label";
 	$total=0;
@@ -225,7 +228,7 @@ if (! empty($conf->categorie->enabled) && ! empty($conf->global->CATEGORY_GRAPHS
 			{
 				$obj = $db->fetch_object($result);
 				$var=!$var;
-				print '<tr $bc[$var]><td>'.$obj->label.'</td><td>'.$obj->nb.'</td></tr>';
+				print '<tr '.$bc[$var].'><td>'.$obj->label.'</td><td>'.$obj->nb.'</td></tr>';
 				$total+=$obj->nb;
 				$i++;
 			}

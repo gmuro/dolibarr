@@ -6,7 +6,7 @@
  * Copyright (C) 2010-2013 Juanjo Menent        <jmenent@2byte.es>
  * Copyright (C) 2013      Florian Henry        <florian.henry@open-concept.pro>
  * Copyright (C) 2014      Cedric GROSS         <c.gross@kreiz-it.fr>
- * Copyright (C) 2015	   Alexandre Spangaro   <alexandre.spangaro@gmail.com>
+ * Copyright (C) 2015	   Alexandre Spangaro   <aspangaro.dolibarr@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -243,6 +243,8 @@ if ($action == 'add')
 		$object->percentage = $percentage;
 		$object->duree=((float) (GETPOST('dureehour') * 60) + (float) GETPOST('dureemin')) * 60;
 
+		$transparency=(GETPOST("transparency")=='on'?1:0);
+
 		$listofuserid=array();
 		if (! empty($_SESSION['assignedtouser'])) $listofuserid=json_decode($_SESSION['assignedtouser'], true);
 		$i=0;
@@ -251,10 +253,10 @@ if ($action == 'add')
 			if ($i == 0)	// First entry
 			{
 				if ($value['id'] > 0) $object->userownerid=$value['id'];
-				$object->transparency = (GETPOST("transparency")=='on'?1:0);
+				$object->transparency = $transparency;
 			}
 
-			$object->userassigned[$value['id']]=array('id'=>$value['id'], 'transparency'=>(GETPOST("transparency")=='on'?1:0));
+			$object->userassigned[$value['id']]=array('id'=>$value['id'], 'transparency'=>$transparency);
 
 			$i++;
 		}
@@ -405,7 +407,7 @@ if ($action == 'update')
 		if (! $datef && $percentage == 100)
 		{
 			$error++; $donotclearsession=1;
-			setEventMessages($langs->trans("ErrorFieldRequired",$langs->transnoentitiesnoconv("DateEnd")),$object->errors,'errors');
+			setEventMessages($langs->transnoentitiesnoconv("ErrorFieldRequired",$langs->transnoentitiesnoconv("DateEnd")),$object->errors,'errors');
 			$action = 'edit';
 		}
 
@@ -435,6 +437,8 @@ if ($action == 'update')
 			$object->userassigned[$val['id']]=array('id'=>$val['id'], 'mandatory'=>0, 'transparency'=>($user->id == $val['id'] ? $transparency : ''));
 			$i++;
 		}
+
+		$object->transparency = $transparency;		// We set transparency on event (even if we can also store it on each user, standard says this property is for event)
 
 		if (! empty($conf->global->AGENDA_ENABLE_DONEBY))
 		{
@@ -780,6 +784,8 @@ if ($action == 'create')
 		print '<td colspan="3">'.dolGetElementUrl($originid,$origin,1).'</td></tr>';
 		print '<input type="hidden" name="fk_element" size="10" value="'.GETPOST('originid').'">';
 		print '<input type="hidden" name="elementtype" size="10" value="'.GETPOST('origin').'">';
+		print '<input type="hidden" name="originid" size="10" value="'.GETPOST('originid').'">';
+		print '<input type="hidden" name="origin" size="10" value="'.GETPOST('origin').'">';
 	}
 
 	if (GETPOST("datep") && preg_match('/^([0-9][0-9][0-9][0-9])([0-9][0-9])([0-9][0-9])$/',GETPOST("datep"),$reg))
@@ -924,8 +930,65 @@ if ($id > 0)
 		print '<tr><td>'.$langs->trans("DateActionEnd").'</td><td colspan="3">';
 		if (GETPOST("afaire") == 1) $form->select_date($datef?$datef:$object->datef,'p2',1,1,1,"action",1,1,0,0,'fulldayend');
 		else if (GETPOST("afaire") == 2) $form->select_date($datef?$datef:$object->datef,'p2',1,1,1,"action",1,1,0,0,'fulldayend');
+		//else $form->select_date($datef?$datef:$object->datef,'p2',1,1,1,"action",1,1,0,0,'fulldayend','ap');
 		else $form->select_date($datef?$datef:$object->datef,'p2',1,1,1,"action",1,1,0,0,'fulldayend');
 		print '</td></tr>';
+
+		$userepeatevent=0;	// Dev in progress
+		if ($userepeatevent)
+		{
+			// Repeat
+			print '<tr><td>'.$langs->trans("RepeatEvent").'</td><td colspan="3">';
+			print '<input type="hidden" name="recurid" value="'.$object->recurid.'">';
+			$arrayrecurrulefreq=array(
+					'no'=>$langs->trans("No"),
+					'MONTHLY'=>$langs->trans("EveryMonth"),
+					'WEEKLY'=>$langs->trans("EveryWeek"),
+					//'DAYLY'=>$langs->trans("EveryDay")
+					);
+			$selectedrecurrulefreq='no';
+			$selectedrecurrulebymonthday='';
+			$selectedrecurrulebyday='';
+			if ($object->recurrule && preg_match('/FREQ=([A-Z]+)/i',$object->recurrule,$reg)) $selectedrecurrulefreq=$reg[1];
+			if ($object->recurrule && preg_match('/FREQ=MONTHLY.*BYMONTHDAY=(\d+)/i',$object->recurrule,$reg)) $selectedrecurrulebymonthday=$reg[1];
+			if ($object->recurrule && preg_match('/FREQ=WEEKLY.*BYDAY(\d+)/i',$object->recurrule,$reg)) $selectedrecurrulebyday=$reg[1];
+			print $form->selectarray('recurrulefreq', $arrayrecurrulefreq, $selectedrecurrulefreq);
+			// If recurrulefreq is MONTHLY
+			print '<div class="repeateventBYMONTHDAY">';
+			print $langs->trans("DayOfMonth").': <input type="input" size="2" name="BYMONTHDAY" value="'.$selectedrecurrulebymonthday.'">';
+			print '</div>';
+			// If recurrulefreq is WEEKLY
+			print '<div class="repeateventBYDAY">';
+			print $langs->trans("DayOfWeek").': <input type="input" size="4" name="BYDAY" value="'.$selectedrecurrulebyday.'">';
+			print '</div>';
+			print '<script type="text/javascript" language="javascript">
+				jQuery(document).ready(function() {
+					function init_repeat()
+					{
+						if (jQuery("#recurrulefreq").val() == \'MONTHLY\')
+						{
+							jQuery(".repeateventBYMONTHDAY").show();
+							jQuery(".repeateventBYDAY").hide();
+						}
+						else if (jQuery("#recurrulefreq").val() == \'WEEKLY\')
+						{
+							jQuery(".repeateventBYMONTHDAY").hide();
+							jQuery(".repeateventBYDAY").show();
+						}
+						else
+						{
+							jQuery(".repeateventBYMONTHDAY").hide();
+							jQuery(".repeateventBYDAY").hide();
+						}
+					}
+					init_repeat();
+					jQuery("#recurrulefreq").change(function() {
+						init_repeat();
+					});
+				});
+				</script>';
+			print '</td></tr>';
+		}
 
 		// Status
 		print '<tr><td class="nowrap">'.$langs->trans("Status").' / '.$langs->trans("Percentage").'</td><td colspan="3">';
@@ -964,7 +1027,7 @@ if ($id > 0)
 			}
 		}
 		print $form->select_dolusers_forevent(($action=='create'?'add':'update'), 'assignedtouser', 1, '', 0, '', '', 0, 0, 0, 'AND u.statut != 0');
-		if (in_array($user->id,array_keys($listofuserid))) print $langs->trans("MyAvailability").':  <input id="transparency" type="checkbox" name="transparency"'.($listofuserid[$user->id]['transparency']?' checked':'').'">'.$langs->trans("Busy");
+		if (in_array($user->id,array_keys($listofuserid))) print $langs->trans("MyAvailability").':  <input id="transparency" type="checkbox" name="transparency"'.($listofuserid[$user->id]['transparency']?' checked':'').'>'.$langs->trans("Busy");
 		print '</td></tr>';
 
 		// Realised by
@@ -992,7 +1055,7 @@ if ($id > 0)
 			print '</td>';
 
 			// Contact
-			print '<td>'.$langs->trans("Contact").'</td><td width="30%">';
+			print '<td>'.$langs->trans("Contact").'</td><td>';
 			$form->select_contacts($object->socid, $object->contactid, 'contactid', 1, '', '', 0, 'minwidth200');
 			print '</td></tr>';
 		}
@@ -1000,17 +1063,15 @@ if ($id > 0)
 		// Project
 		if (! empty($conf->projet->enabled))
 		{
-
 			$formproject=new FormProjets($db);
 
-			// Projet associe
 			$langs->load("project");
 
 			print '<tr><td width="30%">'.$langs->trans("Project").'</td><td colspan="3">';
 			$numprojet=$formproject->select_projects($object->socid,$object->fk_project,'projectid');
 			if ($numprojet==0)
 			{
-				print ' &nbsp; <a href="../../projet/card.php?socid='.$object->socid.'&action=create">'.$langs->trans("AddProject").'</a>';
+				print ' &nbsp; <a href="'.DOL_URL_ROOT.'/projet/card.php?socid='.$object->socid.'&action=create&backtopage='.urlencode($_SERVER["PHP_SELF"].'?id='.$object->id.'&action=edit').'">'.$langs->trans("AddProject").'</a>';
 			}
 			print '</td></tr>';
 		}
@@ -1065,7 +1126,7 @@ if ($id > 0)
 		if($action == 'clone')
 		{
 			$formconfirm = $form->formconfirm($_SERVER["PHP_SELF"] . '?id=' . GETPOST('id'), $langs->trans('CloneAction'), $langs->trans('ConfirmCloneAction', $object->label), 'confirm_clone', $formquestion, 'yes', 1);
-			
+
 			print $formconfirm;
 		}
 
@@ -1275,7 +1336,7 @@ if ($id > 0)
 			{
 				print '<div class="inline-block divButAction"><a class="butActionRefused" href="#" title="'.$langs->trans("NotAllowed").'">'.$langs->trans("Modify").'</a></div>';
 			}
-			
+
 			if ($user->rights->agenda->allactions->create ||
 			   (($object->authorid == $user->id || $object->userownerid == $user->id) && $user->rights->agenda->myactions->create))
 			{
@@ -1285,7 +1346,7 @@ if ($id > 0)
 			{
 				print '<div class="inline-block divButAction"><a class="butActionRefused" href="#" title="'.$langs->trans("NotAllowed").'">'.$langs->trans("ToClone").'</a></div>';
 			}
-			
+
 			if ($user->rights->agenda->allactions->delete ||
 			   (($object->authorid == $user->id || $object->userownerid == $user->id) && $user->rights->agenda->myactions->delete))
 			{

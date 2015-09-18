@@ -5,7 +5,7 @@
  * Copyright (C) 2004		Sebastien Di Cintio		<sdicintio@ressource-toi.org>
  * Copyright (C) 2004		Benoit Mortier			<benoit.mortier@opensides.be>
  * Copyright (C) 2009-2012	Regis Houssin			<regis.houssin@capnetworks.com>
- * Copyright (C) 2014-2015	Alexandre Spangaro		<alexandre.spangaro@gmail.com>
+ * Copyright (C) 2014-2015	Alexandre Spangaro		<aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2015       Marcos García           <marcosgdf@gmail.com>
  * Copyright (C) 2015       Frederic France         <frederic.france@free.fr>
  * Copyright (C) 2015       Raphaël Doursenaud      <rdoursenaud@gpcsolutions.fr>
@@ -1741,7 +1741,7 @@ class Adherent extends CommonObject
 
 	    $now=dol_now();
 
-        $sql = "SELECT a.rowid, a.datefin";
+        $sql = "SELECT a.rowid, a.datefin, a.statut";
         $sql.= " FROM ".MAIN_DB_PREFIX."adherent as a";
         $sql.= " WHERE a.statut = 1";
         $sql.= " AND a.entity IN (".getEntity('adherent', 1).")";
@@ -1758,11 +1758,16 @@ class Adherent extends CommonObject
 	        $response->url=DOL_URL_ROOT.'/adherents/list.php?mainmenu=members&amp;statut=1';
 	        $response->img=img_object($langs->trans("Members"),"user");
 
+            $adherentstatic = new Adherent($this->db);
+
             while ($obj=$this->db->fetch_object($resql))
             {
 	            $response->nbtodo++;
 
-                if ($this->db->jdate($obj->datefin) < ($now - $conf->adherent->cotisation->warning_delay)) {
+                $adherentstatic->datefin = $this->db->jdate($obj->datefin);
+                $adherentstatic->statut = $obj->statut;
+
+                if ($adherentstatic->hasDelay()) {
 	                $response->nbtodolate++;
                 }
             }
@@ -1973,5 +1978,19 @@ class Adherent extends CommonObject
 
 		return CommonObject::commonReplaceThirdparty($db, $origin_id, $dest_id, $tables);
 	}
+
+    public function hasDelay()
+    {
+        global $conf;
+
+        //Only valid members
+        if ($this->statut <= 0) {
+            return false;
+        }
+
+        $now = dol_now();
+
+        return $this->datefin < ($now - $conf->adherent->cotisation->warning_delay);
+    }
 
 }

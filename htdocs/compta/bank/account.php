@@ -6,7 +6,7 @@
  * Copyright (C) 2005-2012 Regis Houssin        <regis.houssin@capnetworks.com>
  * Copyright (C) 2010-2011 Juanjo Menent        <jmenent@@2byte.es>
  * Copyright (C) 2012-2014 Marcos García        <marcosgdf@gmail.com>
- * Copyright (C) 2011-2015 Alexandre Spangaro   <alexandre.spangaro@gmail.com>
+ * Copyright (C) 2011-2015 Alexandre Spangaro   <aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2015      Florian Henry	    <florian.henry@open-concept.pro>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -371,16 +371,17 @@ if ($id > 0 || ! empty($ref))
 
 
 	/*
-	 * Boutons actions
+	 * Buttons actions
 	 */
 
 	if ($action != 'delete')
 	{
 		print '<div class="tabsAction">';
 
-		if ($object->type != 2 && $object->rappro)  // If not cash account and can be reconciliate
-		{
-			if ($user->rights->banque->consolidate)
+		if ($object->type != 2 && $object->rappro) 
+		{ 
+			// If not cash account and can be reconciliate
+			if ($user->rights->banque->consolidate) 
 			{
 				print '<a class="butAction" href="'.DOL_URL_ROOT.'/compta/bank/rappro.php?account='.$object->id.($vline?'&amp;vline='.$vline:'').'">'.$langs->trans("Conciliate").'</a>';
 			}
@@ -390,27 +391,26 @@ if ($id > 0 || ! empty($ref))
 			}
 		}
 
-		if ($action != 'addline')
+		if ($action != 'addline') 
 		{
-			if (empty($conf->global->BANK_DISABLE_DIRECT_INPUT))
+			if (empty($conf->global->BANK_DISABLE_DIRECT_INPUT)) 
 			{
-				if ($user->rights->banque->modifier)
-				{
-					print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?action=addline&amp;id='.$object->id.'&amp;page='.$page.($vline?'&amp;vline='.$vline:'').'">'.$langs->trans("AddBankRecord").'</a>';
-				}
-				else
-				{
-					print '<a class="butActionRefused" title="'.$langs->trans("NotEnoughPermissions").'" href="#">'.$langs->trans("AddBankRecord").'</a>';
-				}
-			}
-			else
-			{
-				print '<a class="butActionRefused" title="'.$langs->trans("FeatureDisabled").'" href="#">'.$langs->trans("AddBankRecord").'</a>';
-			}
-		}
-
-		print '</div>';
-	}
+                if (empty($conf->accounting->enabled))
+                {
+                    if ($user->rights->banque->modifier) {
+                        print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?action=addline&amp;id='.$object->id.'&amp;page='.$page.($vline?'&amp;vline='.$vline:'').'">'.$langs->trans("AddBankRecord").'</a>';
+                    } else {
+                        print '<a class="butActionRefused" title="'.$langs->trans("NotEnoughPermissions").'" href="#">'.$langs->trans("AddBankRecord").'</a>';
+                    }
+                } else {
+                    print '<a class="butActionRefused" title="'.$langs->trans("FeatureDisabled").'" href="#">'.$langs->trans("AddBankRecord").'</a>';
+                }
+			} else {
+                print '<a class="butActionRefused" title="'.$langs->trans("FeatureDisabled").'" href="#">'.$langs->trans("AddBankRecord").'</a>';
+            }
+        }
+        print '</div>';
+    }
 	
 	print '<br>';
 		
@@ -466,15 +466,12 @@ if ($id > 0 || ! empty($ref))
 		print '<div class="floatright">'.$navig.'</div>';
 	}
 	
-	print '<table class="noborder" width="100%">';
-
 	// Form to add a transaction with no invoice
 	if ($user->rights->banque->modifier && $action == 'addline')
 	{
-		print '<tr>';
-		print '<td align="left" colspan="10"><b>'.$langs->trans("AddBankRecordLong").'</b></td>';
-		print '</tr>';
+        print_fiche_titre($langs->trans("AddBankRecordLong"),'','');
 
+		print '<table class="noborder" width="100%">';
 		print '<tr class="liste_titre">';
 		print '<td>'.$langs->trans("Date").'</td>';
 		print '<td>&nbsp;</td>';
@@ -507,14 +504,17 @@ if ($id > 0 || ! empty($ref))
 		print '<input type="submit" name="save" class="button" value="'.$langs->trans("Add").'"><br>';
 		print '<input type="submit" name="cancel" class="button" value="'.$langs->trans("Cancel").'">';
 		print '</td></tr>';
-		print "</form>";
-
-		print '<tr class="noborder"><td colspan="10">&nbsp;</td></tr>'."\n";
+		print '</table>';
+		print '</form>';
+		print '<br>';
 	}
 
+	
 	/*
-	 * Affiche tableau des transactions bancaires
+	 * Show list of bank transactions
 	 */
+
+	print '<table class="noborder" width="100%">';
 
 	// Ligne de titre tableau des ecritures
 	print '<tr class="liste_titre">';
@@ -538,11 +538,11 @@ if ($id > 0 || ! empty($ref))
 	print '<input type="hidden" name="id" value="'.$object->id.'">';
 
 	$period_filter .= $langs->trans('From').'&nbsp;'.$form->select_date($req_stdt,'req_stdt',0,0,1,null,1,1,1);
-	$period_filter .= '<BR>'. $langs->trans('to').'&nbsp;'.$form->select_date($req_enddt,'req_enddt',0,0,1,null,1,1,1);
+	$period_filter .= '&nbsp;';
+	$period_filter .= $langs->trans('to').'&nbsp;'.$form->select_date($req_enddt,'req_enddt',0,0,1,null,1,1,1);
 	
 	print '<tr class="liste_titre">';
-	print '<td>&nbsp;</td>';
-	print '<td>'.$period_filter.'</td>';
+	print '<td colspan="2">'.$period_filter.'</td>';
 	print '<td>';
 	//$filtertype=array('TIP'=>'TIP','PRE'=>'PRE',...)
 	$filtertype='';
@@ -664,7 +664,8 @@ if ($id > 0 || ! empty($ref))
 				$label=($langs->trans("PaymentTypeShort".$objp->fk_type)!="PaymentTypeShort".$objp->fk_type)?$langs->trans("PaymentTypeShort".$objp->fk_type):$objp->fk_type;
 
 				if ($objp->fk_type == 'SOLD') $label='&nbsp;';
-				if ($objp->fk_type == 'CHQ' && $objp->fk_bordereau > 0) {
+				if ($objp->fk_type == 'CHQ' && $objp->fk_bordereau > 0) 
+				{
 					dol_include_once('/compta/paiement/cheque/class/remisecheque.class.php');
 					$bordereaustatic = new RemiseCheque($db);
 					$bordereaustatic->id = $objp->fk_bordereau;
@@ -688,6 +689,7 @@ if ($id > 0 || ! empty($ref))
 				{
 					print dol_trunc($objp->label,60);
 				}
+				
 				// Add links after description
 				$links = $object->get_url($objp->rowid);
 				foreach($links as $key=>$val)

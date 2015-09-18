@@ -103,6 +103,8 @@ if ($id > 0 || ! empty($ref)) {
 $hookmanager->initHooks(array('propalcard','globalcard'));
 
 $permissionnote = $user->rights->propale->creer; // Used by the include of actions_setnotes.inc.php
+$permissiondellink=$user->rights->propale->creer;	// Used by the include of actions_dellink.inc.php
+$permissiontoedit = $user->rights->propale->creer; // Used by the include of actions_lineupdown.inc.php
 
 
 /*
@@ -117,7 +119,11 @@ if (empty($reshook))
 {
 	if ($cancel) $action = '';
 
-	include DOL_DOCUMENT_ROOT . '/core/actions_setnotes.inc.php'; // Must be include, not includ_once
+	include DOL_DOCUMENT_ROOT.'/core/actions_setnotes.inc.php'; // Must be include, not includ_once
+
+	include DOL_DOCUMENT_ROOT.'/core/actions_dellink.inc.php';		// Must be include, not include_once
+
+	include DOL_DOCUMENT_ROOT.'/core/actions_lineupdown.inc.php';	// Must be include, not include_once
 
 	// Action clone object
 	if ($action == 'confirm_clone' && $confirm == 'yes')
@@ -1047,49 +1053,6 @@ if (empty($reshook))
 		exit();
 	}
 
-	// Generation doc (depuis lien ou depuis cartouche doc)
-	else if ($action == 'builddoc' && $user->rights->propal->creer) {
-		if (GETPOST('model')) {
-			$object->setDocModel($user, GETPOST('model'));
-		}
-	    if (GETPOST('fk_bank')) { // this field may come from an external module
-            $object->fk_bank = GETPOST('fk_bank');
-        } else {
-            $object->fk_bank = $object->fk_account;
-        }
-
-		// Define output language
-		$outputlangs = $langs;
-		if (! empty($conf->global->MAIN_MULTILANGS)) {
-			$outputlangs = new Translate("", $conf);
-			$newlang = (GETPOST('lang_id') ? GETPOST('lang_id') : $object->thirdparty->default_lang);
-			$outputlangs->setDefaultLang($newlang);
-		}
-		$ret = $object->fetch($id); // Reload to get new records
-		$result = $object->generateDocument($object->modelpdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
-		if ($result <= 0)
-		{
-			setEventMessages($object->error, $object->errors, 'errors');
-	        $action='';
-		}
-	}
-
-	// Remove file in doc form
-	else if ($action == 'remove_file' && $user->rights->propal->creer) {
-		if ($object->id > 0) {
-			require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
-
-			$langs->load("other");
-			$upload_dir = $conf->propal->dir_output;
-			$file = $upload_dir . '/' . GETPOST('file');
-			$ret = dol_delete_file($file, 0, 0, 0, $object);
-			if ($ret)
-				setEventMessage($langs->trans("FileWasRemoved", GETPOST('file')));
-			else
-				setEventMessage($langs->trans("ErrorFailToDeleteFile", GETPOST('file')), 'errors');
-		}
-	}
-
 	// Set project
 	else if ($action == 'classin' && $user->rights->propal->creer) {
 		$object->setProject($_POST['projectid']);
@@ -1133,47 +1096,7 @@ if (empty($reshook))
 	    $result=$object->setShippingMethod(GETPOST('shipping_method_id', 'int'));
 	}
 
-	/*
-	 * Ordonnancement des lignes
-	*/
-
-	else if ($action == 'up' && $user->rights->propal->creer) {
-		$object->line_up(GETPOST('rowid'));
-
-		if (empty($conf->global->MAIN_DISABLE_PDF_AUTOUPDATE)) {
-			// Define output language
-			$outputlangs = $langs;
-			if (! empty($conf->global->MAIN_MULTILANGS)) {
-				$outputlangs = new Translate("", $conf);
-				$newlang = (GETPOST('lang_id') ? GETPOST('lang_id') : $object->thirdparty->default_lang);
-				$outputlangs->setDefaultLang($newlang);
-			}
-			$ret = $object->fetch($id); // Reload to get new records
-			$object->generateDocument($object->modelpdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
-		}
-
-		header('Location: ' . $_SERVER["PHP_SELF"] . '?id=' . $id . '#' . GETPOST('rowid'));
-		exit();
-	}
-
-	else if ($action == 'down' && $user->rights->propal->creer) {
-		$object->line_down(GETPOST('rowid'));
-
-		if (empty($conf->global->MAIN_DISABLE_PDF_AUTOUPDATE)) {
-			// Define output language
-			$outputlangs = $langs;
-			if (! empty($conf->global->MAIN_MULTILANGS)) {
-				$outputlangs = new Translate("", $conf);
-				$newlang = (GETPOST('lang_id') ? GETPOST('lang_id') : $object->thirdparty->default_lang);
-				$outputlangs->setDefaultLang($newlang);
-			}
-			$ret = $object->fetch($id); // Reload to get new records
-			$object->generateDocument($object->modelpdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
-		}
-
-		header('Location: ' . $_SERVER["PHP_SELF"] . '?id=' . $id . '#' . GETPOST('rowid'));
-		exit();
-	} else if ($action == 'update_extras') {
+	else if ($action == 'update_extras') {
 		// Fill array 'array_options' with data from update form
 		$extralabels = $extrafields->fetch_name_optionals_label($object->table_element);
 		$ret = $extrafields->setOptionalsFromPost($extralabels, $object, GETPOST('attribute'));
@@ -1245,6 +1168,12 @@ if (empty($reshook))
 			}
 		}
 	}
+	
+    // Actions to build doc
+    $upload_dir = $conf->propal->dir_output;
+    $permissioncreate=$user->rights->propal->creer;
+    include DOL_DOCUMENT_ROOT.'/core/actions_builddoc.inc.php';
+	
 }
 
 
@@ -2288,6 +2217,9 @@ if ($action == 'create')
 	}
 	print "<br>\n";
 
+	//Select mail models is same action as presend
+	if (GETPOST('modelselected')) $action = 'presend';
+
 	if ($action != 'presend')
 	{
 		print '<div class="fichecenter"><div class="fichehalfleft">';
@@ -2330,10 +2262,6 @@ if ($action == 'create')
 	/*
 	 * Action presend
  	 */
-	//Select mail models is same action as presend
-	if (GETPOST('modelselected')) {
-		$action = 'presend';
-	}
 	if ($action == 'presend')
 	{
 		$object->fetch_projet();
@@ -2362,15 +2290,18 @@ if ($action == 'create')
 		if (! $file || ! is_readable($file)) {
 			$result = $object->generateDocument(GETPOST('model') ? GETPOST('model') : $object->modelpdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
 			if ($result <= 0) {
-				dol_print_error($db, $result);
+				dol_print_error($db, $object->error, $object->errors);
 				exit();
 			}
 			$fileparams = dol_most_recent_file($conf->propal->dir_output . '/' . $ref, preg_quote($ref, '/').'[^\-]+');
 			$file = $fileparams['fullname'];
 		}
 
+		print '<div class="clearboth"></div>';
 		print '<br>';
-		print_titre($langs->trans('SendPropalByMail'));
+		print_fiche_titre($langs->trans('SendPropalByMail'));
+
+		dol_fiche_head('');
 
 		// Create form object
 		include_once DOL_DOCUMENT_ROOT . '/core/class/html.formmail.class.php';
@@ -2439,7 +2370,7 @@ if ($action == 'create')
 
 		print $formmail->get_form();
 
-		print '<br>';
+		dol_fiche_end();
 	}
 }
 

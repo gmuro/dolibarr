@@ -1,9 +1,9 @@
 <?php
 /* Copyright (C) 2005      Rodolphe Quiedeville <rodolphe@quiedeville.org>
- * Copyright (C) 2005-2012 Laurent Destailleur  <eldy@users.sourceforge.net>
+ * Copyright (C) 2005-2015 Laurent Destailleur  <eldy@users.sourceforge.net>
  * Copyright (C) 2005-2011 Regis Houssin        <regis.houssin@capnetworks.com>
  * Copyright (C) 2013      Florian Henry		<florian.henry@open-concept.pro>
- * Copyright (C) 2015       Marcos García       <marcosgdf@gmail.com>
+ * Copyright (C) 2015      Marcos García       <marcosgdf@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -650,9 +650,11 @@ class pdf_merou extends ModelePdfExpedition
 		$pdf->SetXY($blDestX,$Yoff);
 		$pdf->MultiCell($blW,3, $carac_client_name, 0, 'L');
 
+		$posy = $pdf->getY();
+
 		// Show recipient information
-		$pdf->SetFont('','', $default_font_size - 3);
-		$pdf->SetXY($blDestX,$Yoff+(dol_nboflines_bis($carac_client_name,50)*4));
-		$pdf->MultiCell($blW,2, $carac_client, 0, 'L');
+		$pdf->SetFont('','', $default_font_size - 1);
+		$pdf->SetXY($posx+2,$posy);
+		$pdf->MultiCell($widthrecbox, 4, $carac_client, 0, 'L');
 	}
 }

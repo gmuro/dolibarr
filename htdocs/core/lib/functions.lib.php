@@ -9,7 +9,7 @@
  * Copyright (C) 2008      Raphael Bertrand (Resultic)       <raphael.bertrand@resultic.fr>
  * Copyright (C) 2010-2014 Juanjo Menent        <jmenent@2byte.es>
  * Copyright (C) 2013      Cédric Salvador      <csalvador@gpcsolutions.fr>
- * Copyright (C) 2013      Alexandre Spangaro   <alexandre.spangaro@gmail.com>
+ * Copyright (C) 2013      Alexandre Spangaro   <aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2014      Cédric GROSS         <c.gross@kreiz-it.fr>
  * Copyright (C) 2014-2015 Marcos García        <marcosgdf@gmail.com>
  * Copyright (C) 2015       Jean-François Ferry		<jfefe@aternatik.fr>
@@ -142,14 +142,14 @@ function getEntity($element=false, $shared=0)
  */
 function getBrowserInfo($user_agent)
 {
-	include_once DOL_DOCUMENT_ROOT.'/includes/mobiledetect/mobiledetect.class.php';
+	include_once DOL_DOCUMENT_ROOT.'/includes/mobiledetect/mobiledetectlib/Mobile_Detect.php';
 
 	$name='unknown';
 	$version='';
 	$os='unknown';
 	$phone = '';
 
-	$detectmobile = new MobileDetect(null, $user_agent);
+	$detectmobile = new Mobile_Detect(null, $user_agent);
 	$tablet = $detectmobile->isTablet();
 
 	if ($detectmobile->isMobile()) {
@@ -226,7 +226,7 @@ function dol_shutdown()
  *  Return value of a param into GET or POST supervariable
  *
  *  @param	string	$paramname   Name of parameter to found
- *  @param	string	$check	     Type of check (''=no check,  'int'=check it's numeric, 'alpha'=check it's text and sign, 'aZ'=check it's a-z only, 'array'=check it's array, 'san_alpha'= Use filter_var with FILTER_SANITIZE_STRING (do not use this for free text string), 'custom'= custom filter specify $filter and $options)
+ *  @param	string	$check	     Type of check (''=no check,  'int'=check it's numeric, 'alpha'=check it's text and sign, 'aZ'=check it's a-z only, 'array'=check it's array, 'san_alpha'=Use filter_var with FILTER_SANITIZE_STRING (do not use this for free text string), 'custom'= custom filter specify $filter and $options)
  *  @param	int		$method	     Type of method (0 = get then post, 1 = only get, 2 = only post, 3 = post then get, 4 = post then get then cookie)
  *  @param  int     $filter      Filter to apply when $check is set to custom. (See http://php.net/manual/en/filter.filters.php for détails)
  *  @param  mixed   $options     Options to pass to filter_var when $check is set to custom
@@ -302,7 +302,7 @@ function dol_getprefix()
  *
  * 	@param	string	$relpath	Relative path to file (Ie: mydir/myfile, ../myfile, ...)
  * 	@param	string	$classname	Class name
- *  @return bool
+ *  @return bool                True if load is a success, False if it fails
  */
 function dol_include_once($relpath, $classname='')
 {
@@ -545,7 +545,7 @@ function dol_escape_js($stringtoescape, $mode=0, $noescapebackslashn=0)
 
 
 /**
- *  Returns text escaped for inclusion in HTML alt or title tags, or into values of HTMPL input fields
+ *  Returns text escaped for inclusion in HTML alt or title tags, or into values of HTML input fields.
  *
  *  @param      string		$stringtoescape		String to escape
  *  @param		int			$keepb				Do not clean b tags
@@ -731,6 +731,7 @@ function dol_get_fiche_head($links=array(), $active='0', $title='', $notab=0, $p
 	// if =0 we don't use the feature
 	$limittoshow=(empty($conf->global->MAIN_MAXTABS_IN_CARD)?99:$conf->global->MAIN_MAXTABS_IN_CARD);
 	$displaytab=0;
+	$nbintab=0;
 
 	for ($i = 0 ; $i <= $maxkey ; $i++)
 	{
@@ -787,6 +788,7 @@ function dol_get_fiche_head($links=array(), $active='0', $title='', $notab=0, $p
 				$outmore.='<a'.(! empty($links[$i][2])?' id="'.$links[$i][2].'"':'').' class="inline-block" href="'.$links[$i][0].'">'.$links[$i][1].'</a>'."\n";
 
 			$outmore.='</div>';
+			$nbintab++;
 		}
 		$displaytab=$i;
 	}
@@ -795,17 +797,15 @@ function dol_get_fiche_head($links=array(), $active='0', $title='', $notab=0, $p
 	{
 		$tabsname=str_replace("@", "", $picto);
 		$out.='<div id="moretabs'.$tabsname.'" class="inline-block tabsElem">';
-		$out.='<a href="" data-role="button" style="background-color: #f0f0f0;" class="tab inline-block">'.$langs->trans("More").'...</a>';
+		$out.='<a href="" data-role="button" style="background-color: #f0f0f0;" class="tab inline-block">'.$langs->trans("More").' <span class="badge">'.$nbintab.'</span></a>';
 		$out.='<div id="moretabsList'.$tabsname.'" style="position: absolute; left: -999em;text-align: left;margin:0px;padding:2px">'.$outmore.'</div>';
 		$out.="</div>\n";
 
 		$out.="<script>";
-		$out.="$('#moretabs".$tabsname.").mouseenter( function() { $('#moretabsList".$tabsname.").css('left','auto');});";
-		$out.="$('#moretabs".$tabsname.").mouseleave( function() { $('#moretabsList".$tabsname.").css('left','-999em');});";
+		$out.="$('#moretabs".$tabsname."').mouseenter( function() { $('#moretabsList".$tabsname."').css('left','auto');});";
+		$out.="$('#moretabs".$tabsname."').mouseleave( function() { $('#moretabsList".$tabsname."').css('left','-999em');});";
 		$out.="</script>";
 	}
-
-	$out.="</div>\n";
 
 	if (! $notab) $out.="\n".'<div class="tabBar">'."\n";
 
@@ -962,7 +962,8 @@ function dol_strftime($fmt, $ts=false, $is_gmt=false)
  *										"day", "daytext", "dayhour", "dayhourldap", "dayhourtext", "dayrfc", "dayhourrfc"
  * 	@param	string		$tzoutput		true or 'gmt' => string is for Greenwich location
  * 										false or 'tzserver' => output string is for local PHP server TZ usage
- * 										'tzuser' => output string is for local browser TZ usage
+ * 										'tzuser' => output string is for user TZ (current browser TZ with current dst)
+ *                                      'tzuserrel' => output string is for user TZ (current browser TZ with dst or not, depending on date position)
  *	@param	Translate	$outputlangs	Object lang that contains language for text translation.
  *  @param  boolean		$encodetooutput false=no convert into output pagecode
  * 	@return string      				Formated date or '' if time is null
@@ -984,18 +985,16 @@ function dol_print_date($time,$format='',$tzoutput='tzserver',$outputlangs='',$e
 			if ($tzoutput == 'tzserver')
 			{
 				$to_gmt=false;
-				$offsettz=$offsetdst=0;
+				$offsettzstring=@date_default_timezone_get();		// Example 'Europe/Berlin' or 'Indian/Reunion'
+				$offsettz=0;
+				$offsetdst=0;
 			}
 			elseif ($tzoutput == 'tzuser')
 			{
 				$to_gmt=true;
+				$offsettzstring=(empty($_SESSION['dol_tz_string'])?'UTC':$_SESSION['dol_tz_string']);	// Example 'Europe/Berlin' or 'Indian/Reunion'
 				$offsettz=(empty($_SESSION['dol_tz'])?0:$_SESSION['dol_tz'])*60*60;
 				$offsetdst=(empty($_SESSION['dol_dst'])?0:$_SESSION['dol_dst'])*60*60;
-			}
-			elseif ($tzoutput == 'tzcompany')
-			{
-				$to_gmt=false;
-				$offsettz=$offsetdst=0;	// TODO Define this and use it later
 			}
 		}
 	}
@@ -1045,9 +1044,9 @@ function dol_print_date($time,$format='',$tzoutput='tzserver',$outputlangs='',$e
 		$format=str_replace('%A','__A__',$format);
 	}
 
-	// Analyze date (deprecated)   Ex: 1970-01-01, 1970-01-01 01:00:00, 19700101010000
+	// Analyze date
 	if (preg_match('/^([0-9]+)\-([0-9]+)\-([0-9]+) ?([0-9]+)?:?([0-9]+)?:?([0-9]+)?/i',$time,$reg)
-	|| preg_match('/^([0-9][0-9][0-9][0-9])([0-9][0-9])([0-9][0-9])([0-9][0-9])([0-9][0-9])([0-9][0-9])$/i',$time,$reg))
+	|| preg_match('/^([0-9][0-9][0-9][0-9])([0-9][0-9])([0-9][0-9])([0-9][0-9])([0-9][0-9])([0-9][0-9])$/i',$time,$reg))	// Deprecated. Ex: 1970-01-01, 1970-01-01 01:00:00, 19700101010000
 	{
 		// This part of code should not be used. TODO Remove this.
 		dol_syslog("Functions.lib::dol_print_date function call with deprecated value of time in page ".$_SERVER["PHP_SELF"], LOG_WARNING);
@@ -1067,7 +1066,7 @@ function dol_print_date($time,$format='',$tzoutput='tzserver',$outputlangs='',$e
 		// Date is a timestamps
 		if ($time < 100000000000)	// Protection against bad date values
 		{
-			$ret=adodb_strftime($format,$time+$offsettz+$offsetdst,$to_gmt);	// TODO Remove this
+			$ret=adodb_strftime($format,$time+$offsettz+$offsetdst,$to_gmt);	// TODO Replace this with function Date PHP. We also should not use anymore offsettz and offsetdst but only offsettzstring.
 		}
 		else $ret='Bad value '.$time.' for date';
 	}
@@ -1198,13 +1197,13 @@ function dol_mktime($hour,$minute,$second,$month,$day,$year,$gm=false,$check=1)
 	{
 		if (empty($gm) || $gm === 'server')
 		{
-			$default_timezone=@date_default_timezone_get();
+			$default_timezone=@date_default_timezone_get();		// Example 'Europe/Berlin'
 			$localtz = new DateTimeZone($default_timezone);
 		}
 		else if ($gm === 'user')
 		{
-			// We use dol_tz_string first because it contains dst.
-			$default_timezone=(empty($_SESSION["dol_tz_string"])?@date_default_timezone_get():$_SESSION["dol_tz_string"]);
+			// We use dol_tz_string first because it is more reliable.
+			$default_timezone=(empty($_SESSION["dol_tz_string"])?@date_default_timezone_get():$_SESSION["dol_tz_string"]);		// Example 'Europe/Berlin'
 			try {
 				$localtz = new DateTimeZone($default_timezone);
 			}
@@ -1228,19 +1227,6 @@ function dol_mktime($hour,$minute,$second,$month,$day,$year,$gm=false,$check=1)
 	else
 	{
 		dol_print_error('','PHP version must be 5.3+');
-		/*
-		$usealternatemethod=false;
-		if ($year <= 1970) $usealternatemethod=true;		// <= 1970
-		if ($year >= 2038) $usealternatemethod=true;		// >= 2038
-
-		if ($usealternatemethod || $gm)	// Si time gm, seule adodb peut convertir
-		{
-			$date=adodb_mktime($hour,$minute,$second,$month,$day,$year,0,$gm);
-		}
-		else
-		{
-			$date=mktime($hour,$minute,$second,$month,$day,$year);
-		}*/
 		return '';
 	}
 }
@@ -1725,11 +1711,12 @@ function dol_substr($string,$start,$length,$stringencoding='')
  *  @param		string	$type			Type of graph ('pie', 'barline')
  *  @param		int		$showpercent	Show percent (with type='pie' only)
  *  @param		string	$url			Param to add an url to click values
+ *  @param		int		$combineother	0=No combine, 0.05=Combine if lower than 5%
  *  @return		void
  *  @deprecated
  *  @see DolGraph
  */
-function dol_print_graph($htmlid,$width,$height,$data,$showlegend=0,$type='pie',$showpercent=0,$url='')
+function dol_print_graph($htmlid,$width,$height,$data,$showlegend=0,$type='pie',$showpercent=0,$url='',$combineother=0.05)
 {
 	dol_syslog(__FUNCTION__ . " is deprecated", LOG_WARNING);
 
@@ -1777,26 +1764,34 @@ function dol_print_graph($htmlid,$width,$height,$data,$showlegend=0,$type='pie',
 						series: {
 							pie: {
 								show: true,
-								radius: 3/4,
+								radius: 0.8,';
+			if ($combineother)
+			{
+				print '
+								combine: {
+								 	threshold: '.$combineother.'
+								},';
+			}
+			print '
 								label: {
 									show: true,
-									radius: 3/4,
+									radius: 0.9,
 									formatter: function(label, series) {
 										var percent=Math.round(series.percent);
 										var number=series.data[0][1];
 										return \'';
-										print '<div style="font-size:8pt;text-align:center;padding:2px;color:white;">';
+										print '<div style="font-size:8pt;text-align:center;padding:2px;color:black;">';
 										if ($url) print '<a style="color: #FFFFFF;" border="0" href="'.$url.'=">';
-										print '\'+'.($showlegend?'number':'label+\'<br/>\'+number');
+										print '\'+'.($showlegend?'number':'label+\' \'+number');
 										if (! empty($showpercent)) print '+\'<br/>\'+percent+\'%\'';
 										print '+\'';
 										if ($url) print '</a>';
 										print '</div>\';
 									},
 									background: {
-										opacity: 0.5,
+										opacity: 0.0,
 										color: \'#000000\'
-									}
+									},
 								}
 							}
 						},
@@ -2639,7 +2634,7 @@ function dol_print_error_email($prefixcode)
  *	@param  string	$td          Options of attribute td ("" by defaut, example: 'align="center"')
  *	@param  string	$sortfield   Current field used to sort
  *	@param  string	$sortorder   Current sort order
- *  @param	string	$prefix		 Prefix for css
+ *  @param	string	$prefix		 Prefix for css. Use space after prefix to add your own CSS tag.
  *	@return	void
  */
 function print_liste_field_titre($name, $file="", $field="", $begin="", $moreparam="", $td="", $sortfield="", $sortorder="", $prefix="")
@@ -2659,7 +2654,7 @@ function print_liste_field_titre($name, $file="", $field="", $begin="", $morepar
  *	@param  string	$moreattrib  Add more attributes on th ("" by defaut)
  *	@param  string	$sortfield   Current field used to sort
  *	@param  string	$sortorder   Current sort order
- *  @param	string	$prefix		 Prefix for css
+ *  @param	string	$prefix		 Prefix for css. Use space after prefix to add your own CSS tag.
  *	@return	string
  */
 function getTitleFieldOfList($name, $thead=0, $file="", $field="", $begin="", $moreparam="", $moreattrib="", $sortfield="", $sortorder="", $prefix="")
@@ -2675,7 +2670,7 @@ function getTitleFieldOfList($name, $thead=0, $file="", $field="", $begin="", $m
 
 	// If field is used as sort criteria we use a specific class
 	// Example if (sortfield,field)=("nom","xxx.nom") or (sortfield,field)=("nom","nom")
-	if ($field && ($sortfield == $field || $sortfield == preg_replace("/^[^\.]+\./","",$field))) $out.= '<'.$tag.' class="liste_titre_sel" '. $moreattrib.'>';
+	if ($field && ($sortfield == $field || $sortfield == preg_replace("/^[^\.]+\./","",$field))) $out.= '<'.$tag.' class="'.$prefix.'liste_titre_sel" '. $moreattrib.'>';
 	else $out.= '<'.$tag.' class="'.$prefix.'liste_titre" '. $moreattrib.'>';
 
 	if (! empty($conf->dol_optimize_smallscreen) && empty($thead) && $field)    // If this is a sort field
@@ -2735,8 +2730,8 @@ function getTitleFieldOfList($name, $thead=0, $file="", $field="", $begin="", $m
  *
  *	@param	string	$title			Title to show
  *	@return	string					Title to show
- *  @deprecated						Use print_fiche_titre instead
- *  @see print_fiche_titre
+ *  @deprecated						Use load_fiche_titre instead
+ *  @see print_fiche_titre, load_fiche_titre
  */
 function print_titre($title)
 {
@@ -2771,7 +2766,7 @@ function print_fiche_titre($title, $mesg='', $picto='title_generic.png', $pictoi
  * 	@param	int		$id					To force an id on html objects
  * 	@return	string
  */
-function load_fiche_titre($titre, $mesg='', $picto='title.png', $pictoisfullpath=0, $id=0)
+function load_fiche_titre($titre, $mesg='', $picto='title_generic.png', $pictoisfullpath=0, $id=0)
 {
 	global $conf;
 
@@ -2901,11 +2896,11 @@ function print_barre_liste($titre, $page, $file, $options='', $sortfield='', $so
  *	@param	string			$file				Page URL (in most cases provided with $_SERVER["PHP_SELF"])
  *	@param	string			$options         	Other url paramaters to propagate ("" by default)
  *	@param	integer			$nextpage	    	Do we show a next page button
- *	@param	string			$betweenarrows		HTML content to show between arrows. Must contains '<li> </li>' tags.
+ *	@param	string			$betweenarrows		HTML content to show between arrows. MUST contains '<li> </li>' tags or '<li><span> </span></li>'.
  *  @param	string			$afterarrows		HTML content to show after arrows. Must NOT contains '<li> </li>' tags.
  *	@return	void
  */
-function print_fleche_navigation($page,$file,$options='',$nextpage=0,$betweenarrows='',$afterarrows='')
+function print_fleche_navigation($page, $file, $options='', $nextpage=0, $betweenarrows='', $afterarrows='')
 {
 	global $conf, $langs;
 
@@ -2915,8 +2910,10 @@ function print_fleche_navigation($page,$file,$options='',$nextpage=0,$betweenarr
 		if (empty($conf->dol_use_jmobile)) print '<li class="pagination"><a class="paginationprevious" href="'.$file.'?page='.($page-1).$options.'"><</a></li>';
 		else print '<li><a data-role="button" data-icon="arrow-l" data-iconpos="left" href="'.$file.'?page='.($page-1).$options.'">'.$langs->trans("Previous").'</a></li>';
 	}
-	//if ($betweenarrows) print ($page > 0?' ':'').$betweenarrows.($nextpage>0?' ':'');
-	print $betweenarrows;
+	if ($betweenarrows)
+	{
+		print $betweenarrows;
+	}
 	if ($nextpage > 0)
 	{
 		if (empty($conf->dol_use_jmobile)) print '<li class="pagination"><a class="paginationnext" href="'.$file.'?page='.($page+1).$options.'">></a></li>';
@@ -3746,7 +3743,7 @@ function yn($yesno, $case=1, $color=0)
  *
  *	@param	string	$num            Id of object
  *	@param  int		$level		    Level of subdirs to return (1, 2 or 3 levels)
- * 	@param	int		$alpha		    Use alpha ref
+ * 	@param	int		$alpha		    0=Keep number only to forge path, 1=Use alpha part afer the - (By default, use 0).
  *  @param  int		$withoutslash   0=With slash at end, 1=without slash at end (except if '/', we return '')
  *  @param	Object	$object			Object
  *  @param	string	$modulepart		Type of object ('invoice_supplier, 'donation', 'invoice', ...')
@@ -4388,15 +4385,17 @@ function dol_htmloutput_events()
 
 /**
  *	Get formated messages to output (Used to show messages on html output).
+ *  This include also the translation of the message key.
  *
- *	@param	string		$mesgstring		Message string
- *	@param	array		$mesgarray      Messages array
+ *	@param	string		$mesgstring		Message string or message key
+ *	@param	string[]	$mesgarray      Array of message strings or message keys
  *  @param  string		$style          Style of message output ('ok' or 'error')
  *  @param  int			$keepembedded   Set to 1 in error message must be kept embedded into its html place (this disable jnotify)
  *	@return	string						Return html output
  *
  *  @see    dol_print_error
  *  @see    dol_htmloutput_errors
+ *  @see    setEventMessages
  */
 function get_htmloutput_mesg($mesgstring='',$mesgarray='', $style='ok', $keepembedded=0)
 {
@@ -4481,14 +4480,15 @@ function get_htmloutput_errors($mesgstring='', $mesgarray='', $keepembedded=0)
 /**
  *	Print formated messages to output (Used to show messages on html output).
  *
- *	@param	string	$mesgstring		 Message
- *	@param	array	$mesgarray       Messages array
- *  @param  string	$style           Which style to use ('ok', 'warning', 'error')
- *  @param  int		$keepembedded    Set to 1 if message must be kept embedded into its html place (this disable jnotify)
+ *	@param	string		$mesgstring		Message string or message key
+ *	@param	string[]	$mesgarray      Array of message strings or message keys
+ *  @param  string      $style          Which style to use ('ok', 'warning', 'error')
+ *  @param  int         $keepembedded   Set to 1 if message must be kept embedded into its html place (this disable jnotify)
  *  @return	void
  *
  *  @see    dol_print_error
  *  @see    dol_htmloutput_errors
+ *  @see    setEventMessages
  */
 function dol_htmloutput_mesg($mesgstring='',$mesgarray='', $style='ok', $keepembedded=0)
 {
@@ -4642,7 +4642,8 @@ function dol_osencode($str)
 
 
 /**
- *      Return an id or code from a code or id. Store also Code-Id into a cache for next use.
+ *      Return an id or code from a code or id.
+ *      Store also Code-Id into a cache to speed up next request on same key.
  *
  * 		@param	DoliDB	$db			Database handler
  * 		@param	string	$key		Code to get Id
@@ -4650,7 +4651,7 @@ function dol_osencode($str)
  * 		@param	string	$fieldkey	Field for code
  * 		@param	string	$fieldid	Field for id
  *      @return int					<0 if KO, Id of code if OK
- *      @see getLabelFromKey
+ *      @see $langs->getLabelFromKey
  */
 function dol_getIdFromCode($db,$key,$tablename,$fieldkey='code',$fieldid='id')
 {
@@ -4665,7 +4666,7 @@ function dol_getIdFromCode($db,$key,$tablename,$fieldkey='code',$fieldid='id')
 		return $cache_codes[$tablename][$key];   // Found in cache
 	}
 
-	$sql = "SELECT ".$fieldid." as id";
+	$sql = "SELECT ".$fieldid." as valuetoget";
 	$sql.= " FROM ".MAIN_DB_PREFIX.$tablename;
 	$sql.= " WHERE ".$fieldkey." = '".$key."'";
 	dol_syslog('dol_getIdFromCode', LOG_DEBUG);
@@ -4673,7 +4674,7 @@ function dol_getIdFromCode($db,$key,$tablename,$fieldkey='code',$fieldid='id')
 	if ($resql)
 	{
 		$obj = $db->fetch_object($resql);
-		if ($obj) $cache_codes[$tablename][$key]=$obj->id;
+		if ($obj) $cache_codes[$tablename][$key]=$obj->valuetoget;
 		else $cache_codes[$tablename][$key]='';
 		$db->free($resql);
 		return $cache_codes[$tablename][$key];

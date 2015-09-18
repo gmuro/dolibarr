@@ -291,6 +291,55 @@ function pdf_getHeightForLogo($logo, $url = false)
 }
 
 /**
+ * Function to try to calculate height of a HTML Content
+ * 
+ * @param TCPDF     $pdf            PDF initialized object
+ * @param string    $htmlcontent    HTML Contect
+ * @see getStringHeight
+ */
+function pdfGetHeightForHtmlContent(&$pdf, $htmlcontent)
+{
+    // store current object
+    $pdf->startTransaction();
+    // store starting values
+    $start_y = $pdf->GetY();
+    var_dump($start_y);
+    $start_page = $pdf->getPage();
+    // call your printing functions with your parameters
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    $pdf->writeHTMLCell(0, 0, 0, $start_y, $htmlcontent, 0, 1, false, true, 'J',true);
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // get the new Y
+    $end_y = $pdf->GetY();
+    $end_page = $pdf->getPage();
+    // calculate height
+    $height = 0;
+    if ($end_page == $start_page) {
+        $height = $end_y - $start_y;
+    }
+    else 
+    {
+        for ($page=$start_page; $page <= $end_page; ++$page) {
+        	$this->setPage($page);
+        	if ($page == $start_page) {
+        		// first page
+        		$height = $this->h - $start_y - $this->bMargin;
+        	} elseif ($page == $end_page) {
+        		// last page
+        		$height = $end_y - $this->tMargin;
+        	} else {
+        		$height = $this->h - $this->tMargin - $this->bMargin;
+        	}
+        }
+	}
+	// restore previous object
+	$pdf = $pdf->rollbackTransaction();    
+
+    return $height;
+}
+
+
+/**
  * Returns the name of the thirdparty
  *
  * @param Societe|Contact $thirdparty Contact or thirdparty
@@ -353,9 +402,9 @@ function pdf_build_address($outputlangs,$sourcecompany,$targetcompany='',$target
 		if (empty($conf->global->MAIN_PDF_DISABLESOURCEDETAILS))
 		{
 			// Phone
-			if ($sourcecompany->phone) $stringaddress .= ($stringaddress ? "\n" : '' ).$outputlangs->transnoentities("Phone").": ".$outputlangs->convToOutputCharset($sourcecompany->phone);
+			if ($sourcecompany->phone) $stringaddress .= ($stringaddress ? "\n" : '' ).$outputlangs->transnoentities("PhoneShort").": ".$outputlangs->convToOutputCharset($sourcecompany->phone);
 			// Fax
-			if ($sourcecompany->fax) $stringaddress .= ($stringaddress ? "\n" : '' ).$outputlangs->transnoentities("Fax").": ".$outputlangs->convToOutputCharset($sourcecompany->fax);
+			if ($sourcecompany->fax) $stringaddress .= ($stringaddress ? ($sourcecompany->phone ? " - " : "\n") : '' ).$outputlangs->transnoentities("Fax").": ".$outputlangs->convToOutputCharset($sourcecompany->fax);
 			// EMail
 			if ($sourcecompany->email) $stringaddress .= ($stringaddress ? "\n" : '' ).$outputlangs->transnoentities("Email").": ".$outputlangs->convToOutputCharset($sourcecompany->email);
 			// Web
@@ -643,12 +692,12 @@ function pdf_bank(&$pdf,$outputlangs,$curx,$cury,$account,$onlynumber=0,$default
 		$pdf->SetXY($curx, $cury);
 		$pdf->MultiCell(100, 3, $outputlangs->transnoentities("BankAccountNumber").': ' . $outputlangs->convToOutputCharset($account->number), 0, 'L', 0);
 		$cury+=3;
-		
+
 		if ($diffsizecontent <= 2) $cury+=1;
 	}
 
 	$pdf->SetFont('','',$default_font_size - $diffsizecontent);
-	
+
 	if (empty($onlynumber) && ! empty($account->domiciliation))
 	{
 		$pdf->SetXY($curx, $cury);
@@ -659,7 +708,7 @@ function pdf_bank(&$pdf,$outputlangs,$curx,$cury,$account,$onlynumber=0,$default
 		$tmpy=$pdf->getStringHeight(100, $val);
 		$cury+=$tmpy;
 	}
-	
+
 	if (! empty($account->proprio))
 	{
 		$pdf->SetXY($curx, $cury);
@@ -668,15 +717,16 @@ function pdf_bank(&$pdf,$outputlangs,$curx,$cury,$account,$onlynumber=0,$default
 		$tmpy=$pdf->getStringHeight(100, $val);
 		$cury+=$tmpy;
 	}
-	
+
 	else if (! $usedetailedbban) $cury+=1;
-	
+
 	// Use correct name of bank id according to country
 	$ibankey="IBANNumber";
 	if ($account->getCountryCode() == 'IN') $ibankey="IFSC";
 	if (! empty($account->iban))
 	{
-		$ibanDisplay_temp = $outputlangs->convToOutputCharset($account->iban);
+		//Remove whitespaces to ensure we are dealing with the format we expect
+		$ibanDisplay_temp = str_replace(' ', '', $outputlangs->convToOutputCharset($account->iban));
 		$ibanDisplay = "";
 
 		for($i = 0; $i < dol_strlen($ibanDisplay_temp); $i++)
@@ -744,7 +794,7 @@ function pdf_pagefoot(&$pdf,$outputlangs,$paramfreetext,$fromcompany,$marge_bass
 	// First line of company infos
 	$line1=""; $line2=""; $line3=""; $line4="";
 
-	if ($showdetails && 1)
+	if ($showdetails)
 	{
 		// Company name
 		if ($fromcompany->name)
@@ -788,7 +838,7 @@ function pdf_pagefoot(&$pdf,$outputlangs,$paramfreetext,$fromcompany,$marge_bass
 			$line2.=($line2?" - ":"").$fromcompany->email;
 		}
 	}
-	if (($showdetails && 2) || ($fromcompany->country_code == 'DE'))
+	if ($showdetails || ($fromcompany->country_code == 'DE'))
 	{
 		// Managers
 		if ($fromcompany->managers)
@@ -853,11 +903,20 @@ function pdf_pagefoot(&$pdf,$outputlangs,$paramfreetext,$fromcompany,$marge_bass
 	$freetextheight=0;
 	if ($line)	// Free text
 	{
-		$width=20000; $align='L';	// By default, ask a manual break: We use a large value 20000, to not have automatic wrap. This make user understand, he need to add CR on its text.
-		if (! empty($conf->global->MAIN_USE_AUTOWRAP_ON_FREETEXT)) {
-			$width=200; $align='C';
+		//$line="eee<br>\nfd<strong>sf</strong>sdf<br>\nghfghg<br>";
+	    if (empty($conf->global->PDF_ALLOW_HTML_FOR_FREE_TEXT))   // by default
+		{
+			$width=20000; $align='L';	// By default, ask a manual break: We use a large value 20000, to not have automatic wrap. This make user understand, he need to add CR on its text.
+    		if (! empty($conf->global->MAIN_USE_AUTOWRAP_ON_FREETEXT)) {
+    			$width=200; $align='C';
+    		}
+		    $freetextheight=$pdf->getStringHeight($width,$line);
 		}
-		$freetextheight=$pdf->getStringHeight($width,$line);
+		else
+		{
+            $freetextheight=pdfGetHeightForHtmlContent($pdf,dol_htmlentitiesbr($line, 1, 'UTF-8', 0));      // New method (works for HTML content)
+            //print '<br>'.$freetextheight;exit;
+		}
 	}
 
 	$marginwithfooter=$marge_basse + $freetextheight + (! empty($line1)?3:0) + (! empty($line2)?3:0) + (! empty($line3)?3:0) + (! empty($line4)?3:0);
@@ -866,7 +925,14 @@ function pdf_pagefoot(&$pdf,$outputlangs,$paramfreetext,$fromcompany,$marge_bass
 	if ($line)	// Free text
 	{
 		$pdf->SetXY($dims['lm'],-$posy);
-		$pdf->MultiCell(0, 3, $line, 0, $align, 0);
+		if (empty($conf->global->PDF_ALLOW_HTML_FOR_FREE_TEXT))   // by default
+		{
+            $pdf->MultiCell(0, 3, $line, 0, $align, 0);
+		}
+		else
+		{
+            $pdf->writeHTMLCell($pdf->page_largeur - $pdf->margin_left - $pdf->margin_right, $freetextheight, $dims['lm'], $dims['hk']-$marginwithfooter, dol_htmlentitiesbr($line, 1, 'UTF-8', 0));
+		}
 		$posy-=$freetextheight;
 	}
 
@@ -1692,55 +1758,62 @@ function pdf_getLinkedObjects($object,$outputlangs)
 		if ($objecttype == 'propal')
 		{
 			$outputlangs->load('propal');
-			$num=count($objects);
-			for ($i=0;$i<$num;$i++)
+			
+			foreach($objects as $elementobject)
 			{
 				$linkedobjects[$objecttype]['ref_title'] = $outputlangs->transnoentities("RefProposal");
-				$linkedobjects[$objecttype]['ref_value'] = $outputlangs->transnoentities($objects[$i]->ref);
+				$linkedobjects[$objecttype]['ref_value'] = $outputlangs->transnoentities($elementobject->ref);
 				$linkedobjects[$objecttype]['date_title'] = $outputlangs->transnoentities("DatePropal");
-				$linkedobjects[$objecttype]['date_value'] = dol_print_date($objects[$i]->date,'day','',$outputlangs);
+				$linkedobjects[$objecttype]['date_value'] = dol_print_date($elementobject->date,'day','',$outputlangs);
 			}
 		}
 		else if ($objecttype == 'commande')
 		{
 			$outputlangs->load('orders');
-			$num=count($objects);
-			for ($i=0;$i<$num;$i++)
+			foreach($objects as $elementobject)
 			{
 				$linkedobjects[$objecttype]['ref_title'] = $outputlangs->transnoentities("RefOrder");
-				$linkedobjects[$objecttype]['ref_value'] = $outputlangs->transnoentities($objects[$i]->ref) . ($objects[$i]->ref_client ? ' ('.$objects[$i]->ref_client.')' : '');
+				$linkedobjects[$objecttype]['ref_value'] = $outputlangs->transnoentities($elementobject->ref) . ($elementobject->ref_client ? ' ('.$elementobject->ref_client.')' : '');
 				$linkedobjects[$objecttype]['date_title'] = $outputlangs->transnoentities("OrderDate");
-				$linkedobjects[$objecttype]['date_value'] = dol_print_date($objects[$i]->date,'day','',$outputlangs);
+				$linkedobjects[$objecttype]['date_value'] = dol_print_date($elementobject->date,'day','',$outputlangs);
 			}
 		}
 		else if ($objecttype == 'contrat')
 		{
 			$outputlangs->load('contracts');
-			$num=count($objects);
-			for ($i=0;$i<$num;$i++)
+			foreach($objects as $elementobject)
 			{
 				$linkedobjects[$objecttype]['ref_title'] = $outputlangs->transnoentities("RefContract");
-				$linkedobjects[$objecttype]['ref_value'] = $outputlangs->transnoentities($objects[$i]->ref);
+				$linkedobjects[$objecttype]['ref_value'] = $outputlangs->transnoentities($elementobject->ref);
 				$linkedobjects[$objecttype]['date_title'] = $outputlangs->transnoentities("DateContract");
-				$linkedobjects[$objecttype]['date_value'] = dol_print_date($objects[$i]->date_contrat,'day','',$outputlangs);
+				$linkedobjects[$objecttype]['date_value'] = dol_print_date($elementobject->date_contrat,'day','',$outputlangs);
 			}
 		}
 		else if ($objecttype == 'shipping')
 		{
 			$outputlangs->load('orders');
 			$outputlangs->load('sendings');
-			$num=count($objects);
-			for ($i=0;$i<$num;$i++)
+			foreach($objects as $elementobject)
 			{
-				$objects[$i]->fetchObjectLinked();
-				$order = $objects[$i]->linkedObjects['commande'][0];
+				$elementobject->fetchObjectLinked();
+				$order = $elementobject->linkedObjects['commande'][0];
 
-				$linkedobjects[$objecttype]['ref_title'] = $outputlangs->transnoentities("RefOrder") . ' / ' . $outputlangs->transnoentities("RefSending");
-				$linkedobjects[$objecttype]['ref_value'] = $outputlangs->transnoentities($order->ref) . ($order->ref_client ? ' ('.$order->ref_client.')' : '');
-				$linkedobjects[$objecttype]['ref_value'].= ' / ' . $outputlangs->transnoentities($objects[$i]->ref);
-				$linkedobjects[$objecttype]['date_title'] = $outputlangs->transnoentities("OrderDate") . ' / ' . $outputlangs->transnoentities("DateSending");
-				$linkedobjects[$objecttype]['date_value'] = dol_print_date($order->date,'day','',$outputlangs);
-				$linkedobjects[$objecttype]['date_value'].= ' / ' . dol_print_date($objects[$i]->date_delivery,'day','',$outputlangs);
+				if (! empty($object->linkedObjects['commande']))	// There is already a link to order so we show only info of shipment
+				{
+					$linkedobjects[$objecttype]['ref_title'] = $outputlangs->transnoentities("RefSending");
+					$linkedobjects[$objecttype]['ref_value'].= $outputlangs->transnoentities($elementobject->ref);
+					$linkedobjects[$objecttype]['date_title'] = $outputlangs->transnoentities("DateSending");
+					$linkedobjects[$objecttype]['date_value'].= dol_print_date($elementobject->date_delivery,'day','',$outputlangs);
+				}
+				else	// We show both info of order and shipment
+				{
+					$linkedobjects[$objecttype]['ref_title'] = $outputlangs->transnoentities("RefOrder") . ' / ' . $outputlangs->transnoentities("RefSending");
+					$linkedobjects[$objecttype]['ref_value'] = $outputlangs->transnoentities($order->ref) . ($order->ref_client ? ' ('.$order->ref_client.')' : '');
+					$linkedobjects[$objecttype]['ref_value'].= ' / ' . $outputlangs->transnoentities($elementobject->ref);
+					$linkedobjects[$objecttype]['date_title'] = $outputlangs->transnoentities("OrderDate") . ' / ' . $outputlangs->transnoentities("DateSending");
+					$linkedobjects[$objecttype]['date_value'] = dol_print_date($order->date,'day','',$outputlangs);
+					$linkedobjects[$objecttype]['date_value'].= ' / ' . dol_print_date($elementobject->date_delivery,'day','',$outputlangs);
+				}
 			}
 		}
 	}

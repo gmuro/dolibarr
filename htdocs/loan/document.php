@@ -1,5 +1,5 @@
 <?php
-/* Copyright (C) 2014		Alexandre Spangaro	<alexandre.spangaro@gmail.com>
+/* Copyright (C) 2014		Alexandre Spangaro	<aspangaro.dolibarr@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -123,7 +123,7 @@ if ($object->id)
     print "<td>";
     if ($action == 'edit')
     {
-        print $form->select_date($object->datestart, 'start', 0, 0, 0, 'loan', 1);
+        print $form->select_date($object->datestart, 'start', 0, 0, 0, 'loan', 1, 0, 1);
     }
     else
     {
@@ -137,7 +137,7 @@ if ($object->id)
     print "<td>";
     if ($action == 'edit')
     {
-        print $form->select_date($object->dateend, 'end', 0, 0, 0, 'loan', 1);
+        print $form->select_date($object->dateend, 'end', 0, 0, 0, 'loan', 1, 0, 1);
     }
     else
     {

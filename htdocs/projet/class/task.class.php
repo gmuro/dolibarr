@@ -499,9 +499,11 @@ class Task extends CommonObject
      *	@param	int		$withpicto		0=No picto, 1=Include picto into link, 2=Only picto
      *	@param	string	$option			'withproject' or ''
      *  @param	string	$mode			Mode 'task', 'time', 'contact', 'note', document' define page to link to.
+     * 	@param	int		$addlabel		0=Default, 1=Add label into string, >1=Add first chars into string
+     *  @param	string	$sep			Separator between ref and label if option addlabel is set
      *	@return	string					Chaine avec URL
      */
-    function getNomUrl($withpicto=0,$option='',$mode='task')
+    function getNomUrl($withpicto=0,$option='',$mode='task', $addlabel=0, $sep=' - ')
     {
         global $langs;
 
@@ -525,7 +527,7 @@ class Task extends CommonObject
 
         if ($withpicto) $result.=($link.img_object($label, $picto, 'class="classfortooltip"').$linkend);
         if ($withpicto && $withpicto != 2) $result.=' ';
-        if ($withpicto != 2) $result.=$link.$this->ref.$linkend;
+        if ($withpicto != 2) $result.=$link.$this->ref.$linkend . (($addlabel && $this->label) ? $sep . dol_trunc($this->label, ($addlabel > 1 ? $addlabel : 0)) : '');
         return $result;
     }
 
@@ -585,12 +587,14 @@ class Task extends CommonObject
             $sql.= " WHERE p.entity = ".$conf->entity;
             $sql.= " AND t.fk_projet = p.rowid";
         }
-        if ($mode == 1)
+        elseif ($mode == 1)
         {
             $sql.= " FROM ".MAIN_DB_PREFIX."projet as p";
             $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."projet_task as t on t.fk_projet = p.rowid";
             $sql.= " WHERE p.entity = ".$conf->entity;
         }
+        else return 'BadValueForParameterMode';
+
         if ($filteronprojuser)
         {
 			// TODO
@@ -603,7 +607,7 @@ class Task extends CommonObject
         if ($projectid) $sql.= " AND p.rowid in (".$projectid.")";
         if ($filteronprojref) $sql.= " AND p.ref LIKE '%".$filteronprojref."%'";
         if ($filteronprojstatus > -1) $sql.= " AND p.fk_statut = ".$filteronprojstatus;
-        if ($morewherefilter) $sql.=" AND (".$morewherefilter.")";
+        if ($morewherefilter) $sql.=$morewherefilter;
         $sql.= " ORDER BY p.ref, t.rang, t.dateo";
 
         //print $sql;exit;
@@ -819,7 +823,8 @@ class Task extends CommonObject
         {
             $tasktime_id = $this->db->last_insert_id(MAIN_DB_PREFIX."projet_task_time");
             $ret = $tasktime_id;
-
+			$this->timespent_id = $ret;
+			
             if (! $notrigger)
             {
                 // Call trigger
@@ -948,7 +953,7 @@ class Task extends CommonObject
 			$sql.=" AND (".$datefieldname." <= '".$this->db->idate($datee)."' OR ".$datefieldname." IS NULL)";
 		}
 		//print $sql;
-		
+
         dol_syslog(get_class($this)."::getSumOfAmount", LOG_DEBUG);
         $resql=$this->db->query($sql);
         if ($resql)
@@ -957,7 +962,7 @@ class Task extends CommonObject
 
             $result['amount'] = $obj->amount;
             $result['nblinesnull'] = $obj->nblinesnull;
-            
+
             $this->db->free($resql);
             return $result;
         }
@@ -1041,7 +1046,7 @@ class Task extends CommonObject
         $sql = "UPDATE ".MAIN_DB_PREFIX."projet_task_time SET";
         $sql.= " task_date = '".$this->db->idate($this->timespent_date)."',";
         $sql.= " task_datehour = '".$this->db->idate($this->timespent_datehour)."',";
-        $sql.= " task_date_withhour = ".(empty($this->timespent_withhour)?0:1);
+        $sql.= " task_date_withhour = ".(empty($this->timespent_withhour)?0:1).",";
         $sql.= " task_duration = ".$this->timespent_duration.",";
         $sql.= " fk_user = ".$this->timespent_fk_user.",";
         $sql.= " note = ".(isset($this->timespent_note)?"'".$this->db->escape($this->timespent_note)."'":"null");
@@ -1481,10 +1486,9 @@ class Task extends CommonObject
 	 *  @param  int			$hidedetails    Hide details of lines
 	 *  @param  int			$hidedesc       Hide description
 	 *  @param  int			$hideref        Hide ref
-	 *  @param  HookManager	$hookmanager	Hook manager instance
 	 *  @return int         				0 if KO, 1 if OK
 	 */
-	public function generateDocument($modele, $outputlangs, $hidedetails=0, $hidedesc=0, $hideref=0, $hookmanager=false)
+	public function generateDocument($modele, $outputlangs, $hidedetails=0, $hidedesc=0, $hideref=0)
 	{
 		global $conf,$langs;
 

@@ -3,7 +3,7 @@
  * Copyright (C) 2004-2015 Laurent Destailleur  <eldy@users.sourceforge.net>
  * Copyright (C) 2005      Eric	Seigne          <eric.seigne@ryxeo.com>
  * Copyright (C) 2005-2012 Regis Houssin        <regis.houssin@capnetworks.com>
- * Copyright (C) 2010-2014 Juanjo Menent        <jmenent@2byte.es>
+ * Copyright (C) 2010-2015 Juanjo Menent        <jmenent@2byte.es>
  * Copyright (C) 2011      Philippe Grand       <philippe.grand@atoo-net.com>
  * Copyright (C) 2012      Marcos García        <marcosgdf@gmail.com>
  * Copyright (C) 2013      Florian Henry        <florian.henry@open-concept.pro>
@@ -117,6 +117,7 @@ else if (! empty($socid) && $socid > 0)
 }
 
 $permissionnote=$user->rights->fournisseur->commande->creer;	// Used by the include of actions_setnotes.inc.php
+$permissiondellink=$user->rights->fournisseur->commande->creer;	// Used by the include of actions_dellink.inc.php
 $permissiontoedit=$user->rights->fournisseur->commande->creer;	// Used by the include of actions_lineupdown.inc.php
 
 
@@ -133,6 +134,8 @@ if (empty($reshook))
 	if ($cancel) $action='';
 
 	include DOL_DOCUMENT_ROOT.'/core/actions_setnotes.inc.php';	// Must be include, not include_once
+
+	include DOL_DOCUMENT_ROOT.'/core/actions_dellink.inc.php';		// Must be include, not include_once
 
 	include DOL_DOCUMENT_ROOT.'/core/actions_lineupdown.inc.php';	// Must be include, not include_once
 
@@ -1609,9 +1612,10 @@ if ($action=='create')
 	print "</form>\n";
 
 	// Show origin lines
-	if (! empty($origin) && ! empty($originid) && is_object($objectsrc)) {
+	if (! empty($origin) && ! empty($originid) && is_object($objectsrc)) 
+	{
 		$title = $langs->trans('ProductsAndServices');
-		print_titre($title);
+		print load_fiche_titre($title,'','');
 
 		print '<table class="noborder" width="100%">';
 
@@ -1754,7 +1758,7 @@ elseif (! empty($object->id))
 	 */
 	if ($action	== 'commande')
 	{
-		$date_com = dol_mktime(0,0,0,$_POST["remonth"],$_POST["reday"],$_POST["reyear"]);
+		$date_com = dol_mktime(GETPOST('rehour'),GETPOST('remin'),GETPOST('resec'),GETPOST("remonth"),GETPOST("reday"),GETPOST("reyear"));
 		$formconfirm = $form->formconfirm($_SERVER['PHP_SELF']."?id=".$object->id."&datecommande=".$date_com."&methode=".$_POST["methodecommande"]."&comment=".urlencode($_POST["comment"]), $langs->trans("MakeOrder"),$langs->trans("ConfirmMakeOrder",dol_print_date($date_com,'day')),"confirm_commande",'',0,2);
 
 	}
@@ -2216,9 +2220,9 @@ elseif (! empty($object->id))
 
             print '<br>';
             print $langs->trans('ServiceLimitedDuration').' '.$langs->trans('From').' ';
-            print $form->select_date($date_start,'date_start'.$date_pf,$conf->global->MAIN_USE_HOURMIN_IN_DATE_RANGE,$conf->global->MAIN_USE_HOURMIN_IN_DATE_RANGE,1,'');
+            print $form->select_date($date_start,'date_start'.$date_pf,$conf->global->MAIN_USE_HOURMIN_IN_DATE_RANGE,$conf->global->MAIN_USE_HOURMIN_IN_DATE_RANGE,1,'',1,0,1);
             print ' '.$langs->trans('to').' ';
-            print $form->select_date($date_end,'date_end'.$date_pf,$conf->global->MAIN_USE_HOURMIN_IN_DATE_RANGE,$conf->global->MAIN_USE_HOURMIN_IN_DATE_RANGE,1,'');
+            print $form->select_date($date_end,'date_end'.$date_pf,$conf->global->MAIN_USE_HOURMIN_IN_DATE_RANGE,$conf->global->MAIN_USE_HOURMIN_IN_DATE_RANGE,1,'',1,0,1);
 
 			print '</td>';
 			print '<td>';
@@ -2296,9 +2300,11 @@ elseif (! empty($object->id))
 			$file=$fileparams['fullname'];
 		}
 
+		print '<div class="clearboth"></div>';
 		print '<br>';
+		print_fiche_titre($langs->trans('SendOrderByMail'));
 
-		print_titre($langs->trans('SendOrderByMail'));
+		dol_fiche_head('');
 
 		// Cree l'objet formulaire mail
 		include_once DOL_DOCUMENT_ROOT.'/core/class/html.formmail.class.php';
@@ -2367,7 +2373,7 @@ elseif (! empty($object->id))
 		// Show form
 		print $formmail->get_form();
 
-		print '<br>';
+		dol_fiche_end();
 	}
 	/*
 	 * Action webservice
@@ -2390,7 +2396,7 @@ elseif (! empty($object->id))
             'entity'=>''
         );
 
-        print_titre($langs->trans('CreateRemoteOrder'));
+        print load_fiche_titre($langs->trans('CreateRemoteOrder'),'');
 
         //Is everything filled?
         if (empty($ws_url) || empty($ws_key)) {
@@ -2624,7 +2630,7 @@ elseif (! empty($object->id))
 				{
 					if ($user->rights->fournisseur->commande->approuver)
 					{
-						if (! empty($conf->global->SUPPLIER_ORDER_DOUBLE_APPROVAL) && ! empty($object->user_approve_id))
+						if (! empty($conf->global->SUPPLIER_ORDER_DOUBLE_APPROVAL) && $conf->global->MAIN_FEATURES_LEVEL > 0 && $object->total_ht >= $conf->global->SUPPLIER_ORDER_DOUBLE_APPROVAL && ! empty($object->user_approve_id))
 						{
 							print '<a class="butActionRefused" href="#" title="'.dol_escape_htmltag($langs->trans("FirstApprovalAlreadyDone")).'">'.$langs->trans("ApproveOrder").'</a>';
 						}
@@ -2640,22 +2646,25 @@ elseif (! empty($object->id))
 				}
 
 				// Second approval (if option SUPPLIER_ORDER_DOUBLE_APPROVAL is set)
-				if ($object->statut == 1)
+				if (! empty($conf->global->SUPPLIER_ORDER_DOUBLE_APPROVAL) && $conf->global->MAIN_FEATURES_LEVEL > 0 && $object->total_ht >= $conf->global->SUPPLIER_ORDER_DOUBLE_APPROVAL)
 				{
-					if ($user->rights->fournisseur->commande->approve2)
+					if ($object->statut == 1)
 					{
-						if (! empty($conf->global->SUPPLIER_ORDER_DOUBLE_APPROVAL) && ! empty($object->user_approve_id2))
+						if ($user->rights->fournisseur->commande->approve2)
 						{
-							print '<a class="butActionRefused" href="#" title="'.dol_escape_htmltag($langs->trans("SecondApprovalAlreadyDone")).'">'.$langs->trans("Approve2Order").'</a>';
+							if (! empty($object->user_approve_id2))
+							{
+								print '<a class="butActionRefused" href="#" title="'.dol_escape_htmltag($langs->trans("SecondApprovalAlreadyDone")).'">'.$langs->trans("Approve2Order").'</a>';
+							}
+							else
+							{
+								print '<a class="butAction"	href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&amp;action=approve2">'.$langs->trans("Approve2Order").'</a>';
+							}
 						}
 						else
 						{
-							print '<a class="butAction"	href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&amp;action=approve2">'.$langs->trans("Approve2Order").'</a>';
+							print '<a class="butActionRefused" href="#" title="'.dol_escape_htmltag($langs->trans("NotAllowed")).'">'.$langs->trans("Approve2Order").'</a>';
 						}
-					}
-					else
-					{
-						print '<a class="butActionRefused" href="#" title="'.dol_escape_htmltag($langs->trans("NotAllowed")).'">'.$langs->trans("Approve2Order").'</a>';
 					}
 				}
 
@@ -2788,7 +2797,7 @@ elseif (! empty($object->id))
 			//print '<tr class="liste_titre"><td colspan="2">'.$langs->trans("ToOrder").'</td></tr>';
 			print '<tr><td>'.$langs->trans("OrderDate").'</td><td>';
 			$date_com = dol_mktime(0, 0, 0, GETPOST('remonth'), GETPOST('reday'), GETPOST('reyear'));
-			print $form->select_date($date_com,'',1,1,'',"commande");
+			print $form->select_date($date_com,'',1,1,'',"commande",1,0,1);
 			print '</td></tr>';
 
 			print '<tr><td>'.$langs->trans("OrderMode").'</td><td>';
@@ -2815,7 +2824,7 @@ elseif (! empty($object->id))
 			print '<table class="border" width="100%">';
 			//print '<tr class="liste_titre"><td colspan="2">'.$langs->trans("Receive").'</td></tr>';
 			print '<tr><td>'.$langs->trans("DeliveryDate").'</td><td>';
-			print $form->select_date('','',1,1,'',"commande");
+			print $form->select_date('','',1,1,'',"commande",1,0,1);
 			print "</td></tr>\n";
 
 			print "<tr><td>".$langs->trans("Delivery")."</td><td>\n";

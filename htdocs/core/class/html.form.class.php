@@ -15,7 +15,7 @@
  * Copyright (C) 2012-2014  Marcos García           <marcosgdf@gmail.com>
  * Copyright (C) 2012       Cedric Salvador         <csalvador@gpcsolutions.fr>
  * Copyright (C) 2012-2015  Raphaël Doursenaud      <rdoursenaud@gpcsolutions.fr>
- * Copyright (C) 2014       Alexandre Spangaro      <alexandre.spangaro@gmail.com>
+ * Copyright (C) 2014       Alexandre Spangaro      <aspangaro.dolibarr@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -364,7 +364,8 @@ class Form
     }
 
     /**
-     *	Show a text and picto with tooltip on text or picto
+     *	Show a text and picto with tooltip on text or picto.
+     *  Can be called by an instancied $form->textwithtooltip or by a static call Form::textwithtooltip
      *
      *	@param	string		$text				Text to show
      *	@param	string		$htmltext			HTML content of tooltip. Must be HTML/UTF8 encoded.
@@ -398,7 +399,7 @@ class Form
         if ($direction > 0) { $extracss=($extracss?$extracss.' ':'').'inline-block'; $extrastyle='padding: 0px; padding-right: 3px !important;'; }
 
         $htmltext=str_replace('"',"&quot;",$htmltext);
-        if ($tooltipon == 2 || $tooltipon == 3) $paramfortooltipimg=' class="classfortooltip inline-block'.($extracss?' '.$extracss:'').'" style="padding: 0px;'.($extrastyle?' '.$extrastyle:'').'" title="'.($noencodehtmltext?$htmltext:dol_escape_htmltag($htmltext,1)).'"'; // Attribut to put on td img tag to store tooltip
+        if ($tooltipon == 2 || $tooltipon == 3) $paramfortooltipimg=' class="classfortooltip inline-block'.($extracss?' '.$extracss:'').'" style="padding: 0px;'.($extrastyle?' '.$extrastyle:'').'" title="'.($noencodehtmltext?$htmltext:dol_escape_htmltag($htmltext,1)).'"'; // Attribut to put on img tag to store tooltip
         else $paramfortooltipimg =($extracss?' class="'.$extracss.'"':'').($extrastyle?' style="'.$extrastyle.'"':''); // Attribut to put on td text tag
         if ($tooltipon == 1 || $tooltipon == 3) $paramfortooltiptd=' class="classfortooltip inline-block'.($extracss?' '.$extracss:'').'" style="padding: 0px;'.($extrastyle?' '.$extrastyle:'').'" title="'.($noencodehtmltext?$htmltext:dol_escape_htmltag($htmltext,1)).'"'; // Attribut to put on td tag to store tooltip
         else $paramfortooltiptd =($extracss?' class="'.$extracss.'"':'').($extrastyle?' style="'.$extrastyle.'"':''); // Attribut to put on td text tag
@@ -984,7 +985,7 @@ class Form
                         $out.= '<option value="'.$obj->rowid.'">'.$label.'</option>';
                     }
 
-                    array_push($outarray, array('key'=>$obj->rowid, 'value'=>$obj->name, 'label'=>$obj->name));
+                    array_push($outarray, array('key'=>$obj->rowid, 'value'=>$obj->rowid, 'label'=>$label));
 
                     $i++;
                     if (($i % 10) == 0) $out.="\n";
@@ -1254,10 +1255,11 @@ class Form
      *  @param	string	$morefilter		Add more filters into sql request
      *  @param	string	$show_every		0=default list, 1=add also a value "Everybody" at beginning of list
      *  @param	string	$enableonlytext	If option $enableonly is set, we use this text to explain into label why record is disabled. Not used if enableonly is empty.
+     *  @param	string	$morecss		More css
      * 	@return	string					HTML select string
      *  @see select_dolgroups
      */
-    function select_dolusers($selected='', $htmlname='userid', $show_empty=0, $exclude='', $disabled=0, $include='', $enableonly='', $force_entity=0, $maxlength=0, $showstatus=0, $morefilter='', $show_every=0, $enableonlytext='')
+    function select_dolusers($selected='', $htmlname='userid', $show_empty=0, $exclude='', $disabled=0, $include='', $enableonly='', $force_entity=0, $maxlength=0, $showstatus=0, $morefilter='', $show_every=0, $enableonlytext='', $morecss='')
     {
         global $conf,$user,$langs;
 
@@ -1339,7 +1341,7 @@ class Form
 		            $nodatarole=($comboenhancement?' data-role="none"':'');
 		        }
 
-                $out.= '<select class="flat minwidth200" id="'.$htmlname.'" name="'.$htmlname.'"'.($disabled?' disabled':'').$nodatarole.'>';
+                $out.= '<select class="flat minwidth200'.($morecss?' '.$morecss:'').'" id="'.$htmlname.'" name="'.$htmlname.'"'.($disabled?' disabled':'').$nodatarole.'>';
                 if ($show_empty) $out.= '<option value="-1"'.((empty($selected) || $selected==-1)?' selected':'').'>&nbsp;</option>'."\n";
 				if ($show_every) $out.= '<option value="-2"'.(($selected==-2)?' selected':'').'>-- '.$langs->trans("Everybody").' --</option>'."\n";
 
@@ -2071,10 +2073,12 @@ class Form
                 if ($filterkey && $filterkey != '') $label=preg_replace('/('.preg_quote($filterkey).')/i','<strong>$1</strong>',$label,1);
 
                 $opt.=$objp->ref;
-                if (! empty($objp->idprodfournprice)) $opt.=' ('.$objp->ref_fourn.')';
+                if (! empty($objp->idprodfournprice) && ($objp->ref != $objp->ref_fourn)) 
+                	$opt.=' ('.$objp->ref_fourn.')';
                 $opt.=' - ';
                 $outval.=$objRef;
-                if (! empty($objp->idprodfournprice)) $outval.=' ('.$objRefFourn.')';
+                if (! empty($objp->idprodfournprice) && ($objp->ref != $objp->ref_fourn)) 
+                	$outval.=' ('.$objRefFourn.')';
                 $outval.=' - ';
                 $opt.=dol_trunc($label, 72).' - ';
                 $outval.=dol_trunc($label, 72).' - ';
@@ -2382,6 +2386,8 @@ class Form
         if ($num > 0) return 0;    // Cache already loaded
 
         dol_syslog(__METHOD__, LOG_DEBUG);
+
+		$langs->load('propal');
 
         $sql = "SELECT rowid, code, label";
         $sql.= " FROM ".MAIN_DB_PREFIX.'c_availability';
@@ -3010,6 +3016,8 @@ class Form
         global $langs;
         $langs->load("categories");
 
+		include_once DOL_DOCUMENT_ROOT.'/categories/class/categorie.class.php';
+        
         $cat = new Categorie($this->db);
         $cate_arbo = $cat->get_full_arbo($type,$excludeafterid);
 
@@ -3167,6 +3175,18 @@ class Form
                             $i++;
                         }
                     }
+					else if ($input['type'] == 'date')
+					{
+						$more.='<tr><td>'.$input['label'].'</td>';
+						$more.='<td colspan="2" align="left">';
+						$more.=$this->select_date($input['value'],$input['name'],0,0,0,'',1,0,1);
+						$more.='</td></tr>'."\n";
+						$formquestion[] = array('name'=>$input['name'].'day');
+						$formquestion[] = array('name'=>$input['name'].'month');
+						$formquestion[] = array('name'=>$input['name'].'year');
+						$formquestion[] = array('name'=>$input['name'].'hour');
+						$formquestion[] = array('name'=>$input['name'].'min');
+					}
                     else if ($input['type'] == 'other')
                     {
                         $more.='<tr><td>';
@@ -3204,11 +3224,11 @@ class Form
             {
                 foreach ($formquestion as $key => $input)
                 {
-                    if (isset($input['name'])) array_push($inputok,$input['name']);
+                	//print "xx ".$key." rr ".is_array($input)."<br>\n";
+                    if (is_array($input) && isset($input['name'])) array_push($inputok,$input['name']);
                     if (isset($input['inputko']) && $input['inputko'] == 1) array_push($inputko,$input['name']);
                 }
             }
-
 			// Show JQuery confirm box. Note that global var $useglobalvars is used inside this template
             $formconfirm.= '<div id="'.$dialogconfirm.'" title="'.dol_escape_htmltag($title).'" style="display: none;">';
             if (! empty($more)) {
@@ -3524,7 +3544,7 @@ class Form
             $ret.='<input type="hidden" name="token" value="'.$_SESSION['newtoken'].'">';
             $ret.='<table class="nobordernopadding" cellpadding="0" cellspacing="0">';
             $ret.='<tr><td>';
-            $ret.=$this->select_date($selected,$htmlname,$displayhour,$displaymin,1,'form'.$htmlname);
+            $ret.=$this->select_date($selected,$htmlname,$displayhour,$displaymin,1,'form'.$htmlname,1,0,1);
             $ret.='</td>';
             $ret.='<td align="left"><input type="submit" class="button" value="'.$langs->trans("Modify").'"></td>';
             $ret.='</tr></table></form>';
@@ -4031,14 +4051,15 @@ class Form
      *	@param	int			$empty			0=Fields required, 1=Empty inputs are allowed, 2=Empty inputs are allowed for hours only
      *	@param	string		$form_name 		Not used
      *	@param	int			$d				1=Show days, month, years
-     * 	@param	int			$addnowbutton	Add a button "Now"
+     * 	@param	int			$addnowlink		Add a link "Now"
      * 	@param	int			$nooutput		Do not output html string but return it
      * 	@param 	int			$disabled		Disable input fields
      *  @param  int			$fullday        When a checkbox with this html name is on, hour and day are set with 00:00 or 23:59
+     *  @param	string		$addplusone		Add a link "+1 hour". Value must be name of another select_date field.
      * 	@return	mixed						Nothing or string if nooutput is 1
      *  @see	form_date
      */
-    function select_date($set_time='', $prefix='re', $h=0, $m=0, $empty=0, $form_name="", $d=1, $addnowbutton=0, $nooutput=0, $disabled=0, $fullday='')
+    function select_date($set_time='', $prefix='re', $h=0, $m=0, $empty=0, $form_name="", $d=1, $addnowlink=0, $nooutput=0, $disabled=0, $fullday='', $addplusone='')
     {
         global $conf,$langs;
 
@@ -4191,7 +4212,7 @@ class Form
         if ($h)
         {
             // Show hour
-            $retstring.='<select'.($disabled?' disabled':'').' class="flat '.($fullday?$fullday.'hour':'').'" name="'.$prefix.'hour">';
+            $retstring.='<select'.($disabled?' disabled':'').' class="flat '.($fullday?$fullday.'hour':'').'" id="'.$prefix.'hour" name="'.$prefix.'hour">';
             if ($emptyhours) $retstring.='<option value="-1">&nbsp;</option>';
             for ($hour = 0; $hour < 24; $hour++)
             {
@@ -4205,7 +4226,7 @@ class Form
         if ($m)
         {
             // Show minutes
-            $retstring.='<select'.($disabled?' disabled':'').' class="flat '.($fullday?$fullday.'min':'').'" name="'.$prefix.'min">';
+            $retstring.='<select'.($disabled?' disabled':'').' class="flat '.($fullday?$fullday.'min':'').'" id="'.$prefix.'min" name="'.$prefix.'min">';
             if ($emptyhours) $retstring.='<option value="-1">&nbsp;</option>';
             for ($min = 0; $min < 60 ; $min++)
             {
@@ -4215,14 +4236,18 @@ class Form
             $retstring.='</select>';
         }
 
-        // Add a "Now" button
-        if ($conf->use_javascript_ajax && $addnowbutton)
+        // Add a "Now" link
+        if ($conf->use_javascript_ajax && $addnowlink)
         {
-            // Script which will be inserted in the OnClick of the "Now" button
+            // Script which will be inserted in the onClick of the "Now" link
             $reset_scripts = "";
 
             // Generate the date part, depending on the use or not of the javascript calendar
-            if ($usecalendar == "eldy")
+            $reset_scripts .= 'jQuery(\'#'.$prefix.'\').val(\''.dol_print_date(dol_now(),'day').'\');';
+            $reset_scripts .= 'jQuery(\'#'.$prefix.'day\').val(\''.dol_print_date(dol_now(),'%d').'\');';
+            $reset_scripts .= 'jQuery(\'#'.$prefix.'month\').val(\''.dol_print_date(dol_now(),'%m').'\');';
+            $reset_scripts .= 'jQuery(\'#'.$prefix.'year\').val(\''.dol_print_date(dol_now(),'%Y').'\');';
+            /*if ($usecalendar == "eldy")
             {
                 $base=DOL_URL_ROOT.'/core/';
                 $reset_scripts .= 'resetDP(\''.$base.'\',\''.$prefix.'\',\''.$langs->trans("FormatDateShortJavaInput").'\',\''.$langs->defaultlang.'\');';
@@ -4232,26 +4257,62 @@ class Form
                 $reset_scripts .= 'this.form.elements[\''.$prefix.'day\'].value=formatDate(new Date(), \'d\'); ';
                 $reset_scripts .= 'this.form.elements[\''.$prefix.'month\'].value=formatDate(new Date(), \'M\'); ';
                 $reset_scripts .= 'this.form.elements[\''.$prefix.'year\'].value=formatDate(new Date(), \'yyyy\'); ';
-            }
-            // Generate the hour part
+            }*/
+            // Update the hour part
             if ($h)
             {
                 if ($fullday) $reset_scripts .= " if (jQuery('#fullday:checked').val() == null) {";
-                $reset_scripts .= 'this.form.elements[\''.$prefix.'hour\'].value=formatDate(new Date(), \'HH\'); ';
+                //$reset_scripts .= 'this.form.elements[\''.$prefix.'hour\'].value=formatDate(new Date(), \'HH\'); ';
+                $reset_scripts .= 'jQuery(\'#'.$prefix.'hour\').val(\''.dol_print_date(dol_now(),'%H').'\');';
                 if ($fullday) $reset_scripts .= ' } ';
             }
-            // Generate the minute part
+            // Update the minute part
             if ($m)
             {
                 if ($fullday) $reset_scripts .= " if (jQuery('#fullday:checked').val() == null) {";
-                $reset_scripts .= 'this.form.elements[\''.$prefix.'min\'].value=formatDate(new Date(), \'mm\'); ';
+                //$reset_scripts .= 'this.form.elements[\''.$prefix.'min\'].value=formatDate(new Date(), \'mm\'); ';
+                $reset_scripts .= 'jQuery(\'#'.$prefix.'min\').val(\''.dol_print_date(dol_now(),'%M').'\');';
                 if ($fullday) $reset_scripts .= ' } ';
             }
-            // If reset_scripts is not empty, print the button with the reset_scripts in OnClick
+            // If reset_scripts is not empty, print the link with the reset_scripts in the onClick
             if ($reset_scripts && empty($conf->dol_optimize_smallscreen))
             {
-                $retstring.=' <button class="dpInvisibleButtons datenowlink" id="'.$prefix.'ButtonNow" type="button" name="_useless" value="Now" onClick="'.$reset_scripts.'">';
+                $retstring.=' <button class="dpInvisibleButtons datenowlink" id="'.$prefix.'ButtonNow" type="button" name="_useless" value="now" onClick="'.$reset_scripts.'">';
                 $retstring.=$langs->trans("Now");
+                $retstring.='</button> ';
+            }
+        }
+
+        // Add a "Plus one hour" link
+        if ($conf->use_javascript_ajax && $addplusone)
+        {
+            // Script which will be inserted in the onClick of the "Add plusone" link
+            $reset_scripts = "";
+
+            // Generate the date part, depending on the use or not of the javascript calendar
+            $reset_scripts .= 'jQuery(\'#'.$prefix.'\').val(\''.dol_print_date(dol_now(),'day').'\');';
+            $reset_scripts .= 'jQuery(\'#'.$prefix.'day\').val(\''.dol_print_date(dol_now(),'%d').'\');';
+            $reset_scripts .= 'jQuery(\'#'.$prefix.'month\').val(\''.dol_print_date(dol_now(),'%m').'\');';
+            $reset_scripts .= 'jQuery(\'#'.$prefix.'year\').val(\''.dol_print_date(dol_now(),'%Y').'\');';
+            // Update the hour part
+            if ($h)
+            {
+                if ($fullday) $reset_scripts .= " if (jQuery('#fullday:checked').val() == null) {";
+                $reset_scripts .= 'jQuery(\'#'.$prefix.'hour\').val(\''.dol_print_date(dol_now(),'%H').'\');';
+                if ($fullday) $reset_scripts .= ' } ';
+            }
+            // Update the minute part
+            if ($m)
+            {
+                if ($fullday) $reset_scripts .= " if (jQuery('#fullday:checked').val() == null) {";
+                $reset_scripts .= 'jQuery(\'#'.$prefix.'min\').val(\''.dol_print_date(dol_now(),'%M').'\');';
+                if ($fullday) $reset_scripts .= ' } ';
+            }
+            // If reset_scripts is not empty, print the link with the reset_scripts in the onClick
+            if ($reset_scripts && empty($conf->dol_optimize_smallscreen))
+            {
+                $retstring.=' <button class="dpInvisibleButtons datenowlink" id="'.$prefix.'ButtonPlusOne" type="button" name="_useless2" value="plusone" onClick="'.$reset_scripts.'">';
+                $retstring.=$langs->trans("DateStartPlusOne");
                 $retstring.='</button> ';
             }
         }
@@ -4348,7 +4409,7 @@ class Form
      *	@param	string			$htmlname       Name of html select area. Must start with "multi" if this is a multiselect
      *	@param	array			$array          Array with key+value
      *	@param	string|string[]	$id             Preselected key or preselected keys for multiselect
-     *	@param	int				$show_empty     0 no empty value allowed, 1 to add an empty value into list (value is '' or '&nbsp;').
+     *	@param	int				$show_empty     0 no empty value allowed, 1 to add an empty value into list (value is '' or '&nbsp;'), <0 to add an empty value with key that is this value.
      *	@param	int				$key_in_label   1 pour afficher la key dans la valeur "[key] value"
      *	@param	int				$value_as_key   1 to use value as key
      *	@param  string			$moreparam      Add more parameters onto the select tag
@@ -4397,7 +4458,7 @@ class Form
         {
         	$textforempty=' ';
         	if (! empty($conf->use_javascript_ajax)) $textforempty='&nbsp;';	// If we use ajaxcombo, we need &nbsp; here to avoid to have an empty element that is too small.
-            $out.='<option value="-1"'.($id==-1?' selected':'').'>'.$textforempty.'</option>'."\n";
+            $out.='<option value="'.($show_empty < 0 ? $show_empty : -1).'"'.($id==-2?' selected':'').'>'.$textforempty.'</option>'."\n";     // id is -2 because -1 is already "do not contact"
         }
 
         if (is_array($array))
@@ -4441,70 +4502,71 @@ class Form
      *	Return a HTML select string, built from an array of key+value but content returned into select come from an Ajax call of an URL.
      *  Note: Do not apply langs->trans function on returned content, content may be entity encoded twice.
      *
-     *	@param	string	$htmlname       Name of html select area
-     *	@param	string	$url			Url
-     *	@param	string	$id             Preselected key
-     *	@param	int		$show_empty     0 no empty value allowed, 1 to add an empty value into list (value is '' or '&nbsp;').
-     *	@param	int		$key_in_label   1 pour afficher la key dans la valeur "[key] value"
-     *	@param	int		$value_as_key   1 to use value as key
-     *	@param  string	$moreparam      Add more parameters onto the select tag
-     *	@param  int		$translate		Translate and encode value
-     * 	@param	int		$maxlen			Length maximum for labels
-     * 	@param	int		$disabled		Html select box is disabled
-     *  @param	int		$sort			'ASC' or 'DESC' = Sort on label, '' or 'NONE' = Do not sort
-     *  @param	string	$morecss		Add more class to css styles
-     *  @param	int		$addjscombo		Add js combo
-     * 	@return	string					HTML select string.
+     *	@param	string	$htmlname       		Name of html select area
+     *	@param	string	$url					Url
+     *	@param	string	$id             		Preselected key
+     *	@param  string	$moreparam      		Add more parameters onto the select tag
+     *	@param  string	$moreparamtourl 		Add more parameters onto the Ajax called URL
+     * 	@param	int		$disabled				Html select box is disabled
+     *  @param	int		$minimumInputLength		Minimum Input Length
+     *  @param	string	$morecss				Add more class to css styles
+     * 	@return	string							HTML select string.
      */
-    static function selectArrayAjax($htmlname, $url, $id='', $show_empty=0, $key_in_label=0, $value_as_key=0, $moreparam='', $translate=0, $maxlen=0, $disabled=0, $sort='', $morecss='', $addjscombo=0)
+    static function selectArrayAjax($htmlname, $url, $id='', $moreparam='', $moreparamtourl='', $disabled=0, $minimumInputLength=1, $morecss='')
     {
     	$out = '';
 
-        // Add code for jquery to use select2
-        if ($addjscombo && empty($conf->dol_use_jmobile))
-        {
-        	$tmpplugin='select2';
-        	$out.='<!-- JS CODE TO ENABLE '.$tmpplugin.' for id '.$htmlname.' -->
-    		   <script type="text/javascript">
-				$(document).ready(function () {
-			    	$(".'.$htmlname.'").select2({
-					  ajax: {
-					    dir: "ltr",
-					    url: "'.$url.'",
-					    dataType: \'json\',
-					    delay: 250,
-					    data: function (params) {
-					      return {
-					        q: params.term, // search term
-					        page: params.page
-					      };
-					    },
-					    processResults: function (data, page) {
-					      // parse the results into the format expected by Select2.
-					      // since we are using custom formatting functions we do not need to
-					      // alter the remote JSON data
-					      return {
-					        results: data.items
-					      };
-					    },
-					    cache: true
-					  },
-					  escapeMarkup: function (markup) { return markup; }, // let our custom formatter work
-					  minimumInputLength: 0,
-					  //templateResult: formatRepo, // omitted for brevity, see the source of this page
-					  //templateSelection: formatRepoSelection // omitted for brevity, see the source of this page
-					});
-				});
-			</script>';
-        }
-		else
-		{
-        	// TODO get all values from $url into $array
+    	$tmpplugin='select2';
+    	$out.='<!-- JS CODE TO ENABLE '.$tmpplugin.' for id '.$htmlname.' -->
+	    	<script type="text/javascript">
+	    	$(document).ready(function () {
+		    	$(".'.$htmlname.'").select2({
+			    	ajax: {
+				    	dir: "ltr",
+				    	url: "'.$url.'",
+				    	dataType: \'json\',
+				    	delay: 250,
+				    	data: function (searchTerm, pageNumber, context) {
+				    		return {
+						    	q: searchTerm, // search term
+				    			page: pageNumber
+				    		};
+			    		},
+			    		results: function (remoteData, pageNumber, query) {
+			    			console.log(remoteData);
+			    			return {results:[{id:\'none\', text:\'aa\'}, {id:\'rrr\', text:\'Red\'},{id:\'bbb\', text:\'Search a into projects\'}], more:false}
+			    			//return {results:[remoteData], more:false}
+    					},
+			    		/*processResults: function (data, page) {
+			    			// parse the results into the format expected by Select2.
+			    			// since we are using custom formatting functions we do not need to
+			    			// alter the remote JSON data
+			    			console.log(data);
+			    			return {
+			    				results: data.items
+			    			};
+			    		},*/
+			    		cache: true
+			    	},
+			    	escapeMarkup: function (markup) { return markup; }, // let our custom formatter work
+			    	minimumInputLength: '.$minimumInputLength.',
+			    	//templateResult: formatRepo, // omitted for brevity, see the source of this page
+			    	//templateSelection: formatRepoSelection // omitted for brevity, see the source of this page
+			    });
+			    
+			    $(".'.$htmlname.'").change(function() { 
+			    	alert(\'eee\');
+			    	$(".'.$htmlname.'").select2.clearSearch(); 
+    			} );
 
-		}
+    			
+    			
+    	});
+	    </script>';
 
-   		$out.=self::selectarray('.'.$htmlname, $array, $id, $show_empty, $key_in_label, $value_as_key, '', $translate, $maxlen, $disabled, $sort, '', 0);
 
+		$out.='<input type="text" class="'.$htmlname.($morecss?' '.$morecss:'').'" '.($moreparam?$moreparam.' ':'').'name="'.$htmlname.'">';
+		
 		return $out;
     }
 
@@ -4608,12 +4670,14 @@ class Form
 	 *
 	 * 	@param		int		$id				Id of object
  	 * 	@param		string	$type			Type of category ('member', 'customer', 'supplier', 'product', 'contact'). Old mode (0, 1, 2, ...) is deprecated.
- 	 *  @param		int		$rendermode		0=Default, use multiselect. 1=Emulate multiselect
+ 	 *  @param		int		$rendermode		0=Default, use multiselect. 1=Emulate multiselect (recommended)
 	 * 	@return		mixed					Array of category objects or < 0 if KO
 	 */
 	function showCategories($id, $type, $rendermode=0)
 	{
 		global $db;
+
+		include_once DOL_DOCUMENT_ROOT.'/categories/class/categorie.class.php';
 
 		$cat = new Categorie($db);
 		$categories = $cat->containing($id, $type);
@@ -4623,10 +4687,10 @@ class Form
 			$toprint = array();
 			foreach($categories as $c)
 			{
-				$ways = $c->print_all_ways();
+				$ways = $c->print_all_ways();       // $ways[0] = "ccc2 >> ccc2a >> ccc2a1" with html formated text
 				foreach($ways as $way)
 				{
-					$toprint[] = '<li class="select2-search-choice-dolibarr">'.img_object('','category').' '.$way.'</li>';
+					$toprint[] = '<li class="select2-search-choice-dolibarr"'.($c->color?' style="background: #'.$c->color.'"':'').'>'.img_object('','category').' '.$way.'</li>';
 				}
 			}
 			return '<div class="select2-container-multi-dolibarr" style="width: 90%;"><ul class="select2-choices-dolibarr">'.implode(' ', $toprint).'</ul></div>';
@@ -4844,20 +4908,20 @@ class Form
 				print '<td align="left">' . $langs->trans("AmountHTShort") . '</td>';
 				print '<td align="left">' . $langs->trans("Company") . '</td>';
 				print '</tr>';
-				while ($i < $num) {
+				while ($i < $num)
+				{
 					$objp = $this->db->fetch_object($resqlorderlist);
-					if ($objp->socid == $societe->id) {
-						$var = ! $var;
-						print '<tr ' . $bc [$var] . '>';
-						print '<td aling="left">';
-						print '<input type="radio" name="linkedOrder" value=' . $objp->rowid . '>';
-						print '<td align="center">' . $objp->ref . '</td>';
-						print '<td>' . $objp->ref_supplier . '</td>';
-						print '<td>' . price($objp->total_ht) . '</td>';
-						print '<td>' . $objp->name . '</td>';
-						print '</td>';
-						print '</tr>';
-					}
+
+					$var = ! $var;
+					print '<tr ' . $bc [$var] . '>';
+					print '<td aling="left">';
+					print '<input type="radio" name="linkedOrder" value=' . $objp->rowid . '>';
+					print '<td align="center">' . $objp->ref . '</td>';
+					print '<td>' . $objp->ref_supplier . '</td>';
+					print '<td>' . price($objp->total_ht) . '</td>';
+					print '<td>' . $objp->name . '</td>';
+					print '</td>';
+					print '</tr>';
 
 					$i ++;
 				}

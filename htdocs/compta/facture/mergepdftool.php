@@ -56,7 +56,7 @@ if (GETPOST('button_search'))
 }
 if ($option == 'late') $filter = 'paye:0';
 if ($option == 'unpaidall') $filter = 'paye:0';
-if ($mode == 'sendremind' && $filter == '') $filter = 'paye:0';
+if ($mode == 'sendmassremind' && $filter == '') $filter = 'paye:0';
 if ($filter == '') $filter = 'paye:0';
 
 $search_user = GETPOST('search_user','int');
@@ -165,10 +165,12 @@ if ($action == 'presend' && GETPOST('sendmail'))
 							'__CHECK_READ__' => '<img src="'.DOL_MAIN_URL_ROOT.'/public/emailing/mailing-read.php?tag='.$obj2->tag.'&securitykey='.urlencode($conf->global->MAILING_EMAIL_UNSUBSCRIBE_KEY).'" width="1" height="1" style="width:1px;height:1px" border="0"/>',
 							//'__LASTNAME__' => $obj2->lastname,
 							//'__FIRSTNAME__' => $obj2->firstname,
-							'__REF__' => $object->ref,
+							'__FACREF__' => $object->ref,            // For backward compatibility
+						    '__REF__' => $object->ref,
 							'__REFCLIENT__' => $object->thirdparty->name
 						);
 
+						$subject=make_substitutions($subject, $substitutionarray);
 						$message=make_substitutions($message, $substitutionarray);
 
 						$actiontypecode='AC_FAC';
@@ -196,7 +198,7 @@ if ($action == 'presend' && GETPOST('sendmail'))
 						}
 						else
 						{
-							//$result=$mailfile->sendfile();
+							$result=$mailfile->sendfile();
 							if ($result)
 							{
 								$resultmasssend.=$langs->trans('MailSuccessfulySent',$mailfile->getValidAddress($from,2),$mailfile->getValidAddress($sendto,2));		// Must not contain "
@@ -246,12 +248,11 @@ if ($action == 'presend' && GETPOST('sendmail'))
 					}
 				}
 				else
-				{
+				{  
 					$nbignored++;
 					$langs->load("other");
 					$resultmasssend.='<div class="error">'.$langs->trans('ErrorCantReadFile',$file).'</div>';
-					dol_syslog('Failed to read file: '.$file);
-					break ;
+					dol_syslog('Failed to read file: '.$file, LOG_WARNING);
 				}
 			}
 		}
@@ -263,7 +264,7 @@ if ($action == 'presend' && GETPOST('sendmail'))
 		}
 		else
 		{
-			setEventMessage($langs->trans("NoRemindSent"), 'warnings');
+			setEventMessage($langs->trans("NoRemindSent"), 'warnings');  // May be object has no generated PDF file
 		}
 	}
 }
@@ -556,9 +557,7 @@ if ($resql)
 		include_once DOL_DOCUMENT_ROOT.'/core/class/html.formmail.class.php';
 		$formmail = new FormMail($db);
 
-		print '<br>';
-		print_fiche_titre($langs->trans("SendRemind"),'','');
-		print '<br>';
+		dol_fiche_head(null, '', $langs->trans("SendRemind"));
 
 		$topicmail="MailTopicSendRemindUnpaidInvoices";
 		$modelmail="facture_relance";
@@ -598,7 +597,8 @@ if ($resql)
 		$formmail->param['returnurl']=$_SERVER["PHP_SELF"].'?id='.$object->id;
 
 		print $formmail->get_form();
-		print '<br>'."\n";
+        
+        dol_fiche_end();
 	}
 
 	print '<input type="hidden" name="token" value="'.$_SESSION['newtoken'].'">';
@@ -654,13 +654,16 @@ if ($resql)
 	print_liste_field_titre($langs->trans("Received"),$_SERVER["PHP_SELF"],"am","",$param,'align="right"',$sortfield,$sortorder);
 	print_liste_field_titre($langs->trans("Rest"),$_SERVER["PHP_SELF"],"","",$param,'align="right"',$sortfield,$sortorder);
 	print_liste_field_titre($langs->trans("Status"),$_SERVER["PHP_SELF"],"fk_statut,paye,am","",$param,'align="right"',$sortfield,$sortorder);
+
+	$searchpitco='<input type="image" class="liste_titre" name="button_search" src="'.img_picto($langs->trans("Search"),'search.png','','',1).'" value="'.dol_escape_htmltag($langs->trans("Search")).'" title="'.dol_escape_htmltag($langs->trans("Search")).'">';
+	$searchpitco.='<input type="image" class="liste_titre" name="button_removefilter" src="'.img_picto($langs->trans("Reset"),'searchclear.png','','',1).'" value="'.dol_escape_htmltag($langs->trans("RemoveFilter")).'" title="'.dol_escape_htmltag($langs->trans("RemoveFilter")).'">';
 	if (empty($mode))
 	{
-		print_liste_field_titre($langs->trans("PDFMerge"),$_SERVER["PHP_SELF"],"","",$param,'align="center"',$sortfield,$sortorder);
+		print_liste_field_titre($searchpitco,$_SERVER["PHP_SELF"],"","",$param,'align="center"',$sortfield,$sortorder);
 	}
 	else
 	{
-		print_liste_field_titre($langs->trans("Remind"),$_SERVER["PHP_SELF"],"","",$param,'align="center"',$sortfield,$sortorder);
+		print_liste_field_titre($searchpitco,$_SERVER["PHP_SELF"],"","",$param,'align="center"',$sortfield,$sortorder);
 	}
 	print "</tr>\n";
 
@@ -695,9 +698,6 @@ if ($resql)
 	print $form->selectarray('filtre', $liststatus, $filter, 1);
 	print '</td>';
 	print '<td class="liste_titre" align="center">';
-	print '<input type="image" class="liste_titre" name="button_search" src="'.img_picto($langs->trans("Search"),'search.png','','',1).'" value="'.dol_escape_htmltag($langs->trans("Search")).'" title="'.dol_escape_htmltag($langs->trans("Search")).'">';
-	print '<input type="image" class="liste_titre" name="button_removefilter" src="'.img_picto($langs->trans("Search"),'searchclear.png','','',1).'" value="'.dol_escape_htmltag($langs->trans("RemoveFilter")).'" title="'.dol_escape_htmltag($langs->trans("RemoveFilter")).'">';
-	print '<br>';
 	if (empty($mode))
 	{
 		if ($conf->use_javascript_ajax) print '<a href="#" id="checkall">'.$langs->trans("All").'</a> / <a href="#" id="checknone">'.$langs->trans("None").'</a>';
@@ -734,6 +734,8 @@ if ($resql)
 			$facturestatic->id=$objp->facid;
 			$facturestatic->ref=$objp->facnumber;
 			$facturestatic->type=$objp->type;
+			$facturestatic->statut=$objp->fk_statut;
+			$facturestatic->date_lim_reglement= $db->jdate($objp->datelimite);
 
 			print '<table class="nobordernopadding"><tr class="nocellnopadd">';
 
@@ -744,7 +746,9 @@ if ($resql)
 
 			// Warning picto
 			print '<td width="20" class="nobordernopadding nowrap">';
-			if ($date_limit < ($now - $conf->facture->client->warning_delay) && ! $objp->paye && $objp->fk_statut == 1) print img_warning($langs->trans("Late"));
+			if ($facturestatic->hasDelay()) {
+				print img_warning($langs->trans("Late"));
+			}
 			print '</td>';
 
 			// PDF Picto

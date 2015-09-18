@@ -135,7 +135,7 @@ class Productbatch extends CommonObject
     /**
      *  Load object in memory from the database
      *
-     *  @param	int		$id    Id object
+     *  @param	int		$id		Id object
      *  @return int          	<0 if KO, >0 if OK
      */
     function fetch($id)
@@ -201,6 +201,12 @@ class Productbatch extends CommonObject
 		// Clean parameters
 		$this->clean_param();
 
+		// TODO Check qty is ok for stock move. Negative may not be allowed.
+		if ($this->qty < 0)
+		{
+			
+		}
+		
         // Update request
 		$sql = "UPDATE ".MAIN_DB_PREFIX.self::$_table_element." SET";
 		$sql.= " fk_product_stock=".(isset($this->fk_product_stock)?$this->fk_product_stock:"null").",";
@@ -389,11 +395,12 @@ class Productbatch extends CommonObject
 	}
 
 	/**
-	 * Clean fields (triming)
+	 *  Clean fields (triming)
 	 *
 	 *	@return	void
 	 */
-	private function clean_param() {
+	private function clean_param()
+	{
 		if (isset($this->fk_product_stock)) $this->fk_product_stock=(int) trim($this->fk_product_stock);
 		if (isset($this->batch)) $this->batch=trim($this->batch);
 		if (isset($this->qty)) $this->qty=(float) trim($this->qty);
@@ -403,11 +410,11 @@ class Productbatch extends CommonObject
     /**
      *  Find first detail record that match eather eat-by or sell-by or batch within given warehouse
      *
-     *  @param	int			$fk_product_stock    id product_stock for objet
-     *  @param	date		$eatby    eat-by date for objet
-     *  @param	date		$sellby   sell-by date for objet
+     *  @param	int			$fk_product_stock   id product_stock for objet
+     *  @param	date		$eatby    			eat-by date for objet
+     *  @param	date		$sellby   			sell-by date for objet
      *  @param	string		$batch_number   	batch number for objet
-     *  @return int          	<0 if KO, >0 if OK
+     *  @return int          					<0 if KO, >0 if OK
      */
     function find($fk_product_stock=0, $eatby='',$sellby='',$batch_number='')
     {
@@ -462,16 +469,17 @@ class Productbatch extends CommonObject
     /**
      * Return all batch detail records for given product and warehouse
      *
-     *  @param	DoliDB			$db    database object
-     *  @param	int			$fk_product_stock    id product_stock for objet
-     *  @param	int			$with_qty    doesn't return line with 0 quantity
-	 *  @return int          	<0 if KO, >0 if OK
+     *  @param	DoliDB		$db    				database object
+     *  @param	int			$fk_product_stock	id product_stock for objet
+     *  @param	int			$with_qty    		doesn't return line with 0 quantity
+	 *  @return int         					<0 if KO, >0 if OK
      */
     public static function findAll($db,$fk_product_stock,$with_qty=0)
     {
     	global $langs;
 		$ret = array();
-        $sql = "SELECT";
+
+		$sql = "SELECT";
 		$sql.= " t.rowid,";
 		$sql.= " t.tms,";
 		$sql.= " t.fk_product_stock,";
@@ -480,12 +488,10 @@ class Productbatch extends CommonObject
 		$sql.= " t.batch,";
 		$sql.= " t.qty,";
 		$sql.= " t.import_key";
-
-
-        $sql.= " FROM ".MAIN_DB_PREFIX.self::$_table_element." as t";
+        $sql.= " FROM ".MAIN_DB_PREFIX."product_batch as t";
 		$sql.= " WHERE fk_product_stock=".$fk_product_stock;
-
 		if ($with_qty) $sql.= " AND qty<>0";
+
 		dol_syslog("productbatch::findAll", LOG_DEBUG);
 		$resql=$db->query($sql);
 		if ($resql)

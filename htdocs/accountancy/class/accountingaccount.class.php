@@ -1,8 +1,9 @@
 <?php
 /* Copyright (C) 2013-2014 Olivier Geffroy      <jeff@jeffinfo.com>
- * Copyright (C) 2013-2014 Alexandre Spangaro   <alexandre.spangaro@gmail.com>
+ * Copyright (C) 2013-2015 Alexandre Spangaro   <aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2013-2014 Florian Henry		<florian.henry@open-concept.pro>
  * Copyright (C) 2014 	   Juanjo Menent		<jmenent@2byte.es>
+ * Copyright (C) 2015      Ari Elbaz (elarifr)  <github@accedinfo.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,30 +61,32 @@ class AccountingAccount extends CommonObject
 	/**
 	 * Load record in memory
 	 *
-	 * @param	int		$rowid				Id
-	 * @param	string	$account_number		Account number
-	 * @return 	int							<0 if KO, >0 if OK
+	 * @param	int		$rowid					Id
+	 * @param	string	$account_number			Account number
+	 * @param	int		$limittocurentchart		1=Do not load record if it is into another accounting system
+	 * @return 	int								<0 if KO, >0 if OK
 	 */
-	function fetch($rowid = null, $account_number = null)
+	function fetch($rowid = null, $account_number = null, $limittocurentchart=0)
 	{
-		if ($rowid || $account_number)
-		{
+		global $conf;
+
+		if ($rowid || $account_number) {
 			$sql = "SELECT rowid, datec, tms, fk_pcg_version, pcg_type, pcg_subtype, account_number, account_parent, label, fk_user_author, fk_user_modif, active";
-			$sql.= " FROM " . MAIN_DB_PREFIX . "accountingaccount WHERE";
+			$sql.= " FROM " . MAIN_DB_PREFIX . "accounting_account WHERE";
 			if ($rowid) {
 				$sql .= " rowid = '" . $rowid . "'";
 			} elseif ($account_number) {
 				$sql .= " account_number = '" . $account_number . "'";
 			}
-
+			if (!empty($limittocurentchart)) {
+				$sql .=' AND fk_pcg_version IN (SELECT pcg_version FROM '.MAIN_DB_PREFIX.'accounting_system WHERE rowid='.$conf->global->CHARTOFACCOUNTS.')';
+			}
 			dol_syslog(get_class($this) . "::fetch sql=" . $sql, LOG_DEBUG);
 			$result = $this->db->query($sql);
-			if ($result)
-			{
+			if ($result) {
 				$obj = $this->db->fetch_object($result);
 
-				if ($obj)
-				{
+				if ($obj) {
 					$this->id = $obj->rowid;
 					$this->rowid = $obj->rowid;
 					$this->datec = $obj->datec;
@@ -99,23 +102,19 @@ class AccountingAccount extends CommonObject
 					$this->active = $obj->active;
 
 					return $this->id;
-				}
-				else
-				{
+				} else {
 					return 0;
 				}
-			}
-			else
-			{
-				dol_print_error($this->db);
+			} else {
+				$this->error="Error " . $this->db->lasterror();
+				$this->errors[] = "Error " . $this->db->lasterror();
 			}
 		}
-
 		return -1;
 	}
 
 	/**
-	 * Insert line in accountingaccount
+	 * Insert line in accounting_account
 	 *
 	 * @param 	User	$user 			Use making action
 	 * @param	int		$notrigger		Disable triggers
@@ -126,8 +125,6 @@ class AccountingAccount extends CommonObject
 		global $conf;
 		$error = 0;
 		$now = dol_now();
-
-		$now=dol_now();
 
 		// Clean parameters
 		if (isset($this->fk_pcg_version))
@@ -151,7 +148,7 @@ class AccountingAccount extends CommonObject
 		// Put here code to add control on parameters values
 
 		// Insert request
-		$sql = "INSERT INTO " . MAIN_DB_PREFIX . "accountingaccount(";
+		$sql = "INSERT INTO " . MAIN_DB_PREFIX . "accounting_account(";
 
 		$sql .= "datec";
 		$sql .= ", entity";
@@ -189,7 +186,7 @@ class AccountingAccount extends CommonObject
 		}
 
 		if (! $error) {
-			$this->id = $this->db->last_insert_id(MAIN_DB_PREFIX . "accountingaccount");
+			$this->id = $this->db->last_insert_id(MAIN_DB_PREFIX . "accounting_account");
 
 //			if (! $notrigger) {
 				// Uncomment this and change MYOBJECT to your own tag if you
@@ -228,7 +225,7 @@ class AccountingAccount extends CommonObject
 	{
 		$this->db->begin();
 
-		$sql = "UPDATE " . MAIN_DB_PREFIX . "accountingaccount ";
+		$sql = "UPDATE " . MAIN_DB_PREFIX . "accounting_account ";
 		$sql .= " SET fk_pcg_version = " . ($this->fk_pcg_version ? "'" . $this->db->escape($this->fk_pcg_version) . "'" : "null");
 		$sql .= " , pcg_type = " . ($this->pcg_type ? "'" . $this->db->escape($this->pcg_type) . "'" : "null");
 		$sql .= " , pcg_subtype = " . ($this->pcg_subtype ? "'" . $this->db->escape($this->pcg_subtype) . "'" : "null");
@@ -316,7 +313,7 @@ class AccountingAccount extends CommonObject
 //			}
 
 			if (! $error) {
-				$sql = "DELETE FROM " . MAIN_DB_PREFIX . "accountingaccount";
+				$sql = "DELETE FROM " . MAIN_DB_PREFIX . "accounting_account";
 				$sql .= " WHERE rowid=" . $this->id;
 
 				dol_syslog(get_class($this) . "::delete sql=" . $sql);
@@ -345,6 +342,31 @@ class AccountingAccount extends CommonObject
 	}
 
 	/**
+	 *	Return clicable name (with picto eventually)
+	 *
+	 *	@param		int		$withpicto		0=No picto, 1=Include picto into link, 2=Only picto
+	 *	@return		string					Chaine avec URL
+	 */
+	function getNomUrl($withpicto=0)
+	{
+		global $langs;
+
+		$result='';
+
+		$link = '<a href="'.DOL_URL_ROOT.'/accountancy/admin/card.php?id='.$this->id.'">';
+		$linkend='</a>';
+
+		$picto='billr';
+
+		$label=$langs->trans("Show").': '.$this->account_number.' - '.$this->label;
+
+		if ($withpicto) $result.=($link.img_object($label,$picto).$linkend);
+		if ($withpicto && $withpicto != 2) $result.=' ';
+		if ($withpicto != 2) $result.=$link.$this->account_number.$linkend;
+		return $result;
+	}
+
+	/**
 	 * Information on record
 	 *
 	 * @param int $id of record
@@ -353,7 +375,7 @@ class AccountingAccount extends CommonObject
 	function info($id)
 	{
 		$sql = 'SELECT a.rowid, a.datec, a.fk_user_author, a.fk_user_modif, a.tms';
-		$sql .= ' FROM ' . MAIN_DB_PREFIX . 'accountingaccount as a';
+		$sql .= ' FROM ' . MAIN_DB_PREFIX . 'accounting_account as a';
 		$sql .= ' WHERE a.rowid = ' . $id;
 
 		dol_syslog(get_class($this) . '::info sql=' . $sql);
@@ -395,7 +417,7 @@ class AccountingAccount extends CommonObject
 		if ($result > 0) {
 			$this->db->begin();
 
-			$sql = "UPDATE " . MAIN_DB_PREFIX . "accountingaccount ";
+			$sql = "UPDATE " . MAIN_DB_PREFIX . "accounting_account ";
 			$sql .= "SET active = '0'";
 			$sql .= " WHERE rowid = ".$this->db->escape($id);
 
@@ -425,7 +447,7 @@ class AccountingAccount extends CommonObject
 	{
 		$this->db->begin();
 
-		$sql = "UPDATE " . MAIN_DB_PREFIX . "accountingaccount ";
+		$sql = "UPDATE " . MAIN_DB_PREFIX . "accounting_account ";
 		$sql .= "SET active = '1'";
 		$sql .= " WHERE rowid = ".$this->db->escape($id);
 

@@ -139,7 +139,7 @@ class modExpenseReport extends DolibarrModules
 		$this->rights_class = 'expensereport';
 
 		$this->rights[1][0] = 771;
-		$this->rights[1][1] = 'Read expense reports (own and his subordinates)';
+		$this->rights[1][1] = 'Read expense reports (yours and your subordinates)';
 		$this->rights[1][2] = 'r';
 		$this->rights[1][3] = 1;
 		$this->rights[1][4] = 'lire';
@@ -344,20 +344,5 @@ class modExpenseReport extends DolibarrModules
 		);
 
 		return $this->_init($sql,$options);
-	}
-
-	/**
-	 *  Function called when module is disabled.
-	 *  Remove from database constants, boxes and permissions from Dolibarr database.
-	 *	Data directories are not deleted.
-	 *
-	 *  @param		string		$options		Options
-	 *  @return     int             			1 if OK, 0 if KO
-	 */
-	function remove($options='')
-	{
-		$sql = array();
-
-		return $this->_remove($sql,$options);
 	}
 }

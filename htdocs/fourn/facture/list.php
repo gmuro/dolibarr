@@ -9,7 +9,7 @@
  * Copyright (C) 2015	   juanjo Menent		<jmenent@2byte.es>
  * Copyright (C) 2015 	   Abbes Bahfir 	<bafbes@gmail.com>
  * Copyright (C) 2015	   Ferran Marcet		<fmarcet@2byte.es>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3 of the License, or
@@ -264,7 +264,7 @@ if ($resql)
 	print_liste_field_titre($langs->trans("AmountHT"),$_SERVER["PHP_SELF"],"fac.total_ht","",$param,'align="right"',$sortfield,$sortorder);
 	print_liste_field_titre($langs->trans("AmountTTC"),$_SERVER["PHP_SELF"],"fac.total_ttc","",$param,'align="right"',$sortfield,$sortorder);
 	print_liste_field_titre($langs->trans("Status"),$_SERVER["PHP_SELF"],"fk_statut,paye","",$param,'align="right"',$sortfield,$sortorder);
-	print_liste_field_titre('');
+	print_liste_field_titre('',$_SERVER["PHP_SELF"],"",'','','',$sortfield,$sortorder,'maxwidthsearch ');
 	print "</tr>\n";
 
 	// Line for filters
@@ -305,7 +305,7 @@ if ($resql)
 	print '</td><td class="liste_titre" align="right">';
 	print '<input class="flat" type="text" size="6" name="search_amount_all_tax" value="'.$search_amount_all_tax.'">';
 	print '</td><td class="liste_titre" align="right">';
-	$liststatus=array('paye:0'=>$langs->trans("Unpaid"), 'paye:1'=>$langs->trans("Paid"));
+	$liststatus=array('fac.fk_statut:0'=>$langs->trans("Draft"),'fac.fk_statut:1,paye:0'=>$langs->trans("Unpaid"), 'paye:1'=>$langs->trans("Paid"));
 	print $form->selectarray('filtre', $liststatus, $filter, 1);
 	print '</td><td class="liste_titre" align="right">';
 	print '<input type="image" class="liste_titre" name="button_search" src="'.img_picto($langs->trans("Search"),'search.png','','',1).'" value="'.dol_escape_htmltag($langs->trans("Search")).'" title="'.dol_escape_htmltag($langs->trans("Search")).'">';
@@ -323,6 +323,10 @@ if ($resql)
 	while ($i < min($num,$limit))
 	{
 		$obj = $db->fetch_object($resql);
+
+		$facturestatic->date_echeance = $db->jdate($obj->date_echeance);
+		$facturestatic->statut = $obj->fk_statut;
+
 		$var=!$var;
 
 		print "<tr ".$bc[$var].">";
@@ -342,7 +346,9 @@ if ($resql)
 
 		print '<td align="center" class="nowrap">'.dol_print_date($db->jdate($obj->datef),'day').'</td>';
 		print '<td align="center" class="nowrap">'.dol_print_date($db->jdate($obj->date_echeance),'day');
-		if (($obj->paye == 0) && ($obj->fk_statut > 0) && $obj->date_echeance && $db->jdate($obj->date_echeance) < ($now - $conf->facture->fournisseur->warning_delay)) print img_picto($langs->trans("Late"),"warning");
+		if ($facturestatic->hasDelay()) {
+			print img_picto($langs->trans("Late"),"warning");
+		}
 		print '</td>';
 		print '<td>'.dol_trunc($obj->libelle,36).'</td>';
 		print '<td>';

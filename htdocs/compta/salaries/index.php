@@ -1,5 +1,5 @@
 <?php
-/* Copyright (C) 2011-2014 Alexandre Spangaro  <alexandre.spangaro@gmail.com>
+/* Copyright (C) 2011-2014 Alexandre Spangaro  <aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2015      Laurent Destailleur <eldy@users.sourceforge.net>
  * Copyright (C) 2015      Jean-François Ferry	<jfefe@aternatik.fr>
  *
@@ -134,7 +134,7 @@ if ($result)
 	print_liste_field_titre($langs->trans("DatePayment"),$_SERVER["PHP_SELF"],"s.datep","",$param,'align="center"',$sortfield,$sortorder);
 	print_liste_field_titre($langs->trans("PaymentMode"),$_SERVER["PHP_SELF"],"type","",$param,'align="left"',$sortfield,$sortorder);
 	print_liste_field_titre($langs->trans("PayedByThisPayment"),$_SERVER["PHP_SELF"],"s.amount","",$param,'align="right"',$sortfield,$sortorder);
-	print_liste_field_titre('');
+	print_liste_field_titre('',$_SERVER["PHP_SELF"],"",'','','',$sortfield,$sortorder,'maxwidthsearch ');
     print "</tr>\n";
 
 	print '<tr class="liste_titre">';
@@ -191,17 +191,18 @@ if ($result)
         // Type
         print '<td>'.$langs->trans("PaymentTypeShort".$obj->payment_code).' '.$obj->num_payment.'</td>';
 		// Amount
-        print "<td align=\"right\">".price($obj->amount,0,$outputlangs,1,-1,-1,$conf->currency)."</td>";
-        print "<td>&nbsp;</td>";
+        print "<td align=\"right\">".price($obj->amount)."</td>";
+        print "<td></td>";
         print "</tr>\n";
 
         $total = $total + $obj->amount;
 
         $i++;
     }
+    
     print '<tr class="liste_total"><td colspan="6" class="liste_total">'.$langs->trans("Total").'</td>';
     print '<td  class="liste_total" align="right">'.price($total,0,$outputlangs,1,-1,-1,$conf->currency)."</td>";
-	print "<td>&nbsp;</td></tr>";
+	print "<td></td></tr>";
 
     print "</table>";
 

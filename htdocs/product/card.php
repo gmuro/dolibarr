@@ -5,10 +5,10 @@
  * Copyright (C) 2005-2015	Regis Houssin			<regis.houssin@capnetworks.com>
  * Copyright (C) 2006		Andre Cianfarani		<acianfa@free.fr>
  * Copyright (C) 2006		Auguria SARL			<info@auguria.org>
- * Copyright (C) 2010-2014	Juanjo Menent			<jmenent@2byte.es>
+ * Copyright (C) 2010-2015	Juanjo Menent			<jmenent@2byte.es>
  * Copyright (C) 2013-2014	Marcos García			<marcosgdf@gmail.com>
  * Copyright (C) 2012-2013	Cédric Salvador			<csalvador@gpcsolutions.fr>
- * Copyright (C) 2011-2014	Alexandre Spangaro		<alexandre.spangaro@gmail.com>
+ * Copyright (C) 2011-2015	Alexandre Spangaro		<aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2014		Cédric Gross			<c.gross@kreiz-it.fr>
  * Copyright (C) 2014-2015	Ferran Marcet			<fmarcet@2byte.es>
  * Copyright (C) 2015       Jean-François Ferry     <jfefe@aternatik.fr>
@@ -529,6 +529,7 @@ if (empty($reshook))
     // Add product into object
     if ($object->id > 0 && $action == 'addin')
     {
+        $thirpdartyid =0 ;
         if (GETPOST('propalid') > 0)
         {
         	$propal = new Propal($db);
@@ -563,171 +564,162 @@ if (empty($reshook))
 	        $thirpdartyid = $facture->socid;
         }
 
-        $soc = new Societe($db);
-        $result=$soc->fetch($thirpdartyid);
-        if ($result <= 0)
-        {
-            dol_print_error($db,$soc->error);
-            exit;
-        }
-
-        $desc = $object->description;
-
-        $tva_tx = get_default_tva($mysoc, $soc, $object->id);
-        $localtax1_tx= get_localtax($tva_tx, 1, $soc);
-        $localtax2_tx= get_localtax($tva_tx, 2, $soc);
-
-        $pu_ht = $object->price;
-        $pu_ttc = $object->price_ttc;
-        $price_base_type = $object->price_base_type;
-
-        // If multiprice
-        if ($conf->global->PRODUIT_MULTIPRICES && $soc->price_level)
-        {
-            $pu_ht = $object->multiprices[$soc->price_level];
-            $pu_ttc = $object->multiprices_ttc[$soc->price_level];
-            $price_base_type = $object->multiprices_base_type[$soc->price_level];
-        }
-   		elseif (! empty($conf->global->PRODUIT_CUSTOMER_PRICES))
-		{
-			require_once DOL_DOCUMENT_ROOT . '/product/class/productcustomerprice.class.php';
-
-			$prodcustprice = new Productcustomerprice($db);
-
-			$filter = array('t.fk_product' => $object->id,'t.fk_soc' => $soc->id);
-
-			$result = $prodcustprice->fetch_all('', '', 0, 0, $filter);
-			if ($result) {
-				if (count($prodcustprice->lines) > 0) {
-					$pu_ht = price($prodcustprice->lines [0]->price);
-					$pu_ttc = price($prodcustprice->lines [0]->price_ttc);
-					$price_base_type = $prodcustprice->lines [0]->price_base_type;
-					$prod->tva_tx = $prodcustprice->lines [0]->tva_tx;
-				}
-			}
-		}
-
-        // On reevalue prix selon taux tva car taux tva transaction peut etre different
-        // de ceux du produit par defaut (par exemple si pays different entre vendeur et acheteur).
-        if ($tva_tx != $object->tva_tx)
-        {
-            if ($price_base_type != 'HT')
-            {
-                $pu_ht = price2num($pu_ttc / (1 + ($tva_tx/100)), 'MU');
+        if ( $thirpdartyid > 0)  {
+            $soc = new Societe($db);
+            $result = $soc->fetch($thirpdartyid);
+            if ($result <= 0) {
+                dol_print_error($db, $soc->error);
+                exit;
             }
-            else
-            {
-                $pu_ttc = price2num($pu_ht * (1 + ($tva_tx/100)), 'MU');
+
+            $desc = $object->description;
+
+            $tva_tx = get_default_tva($mysoc, $soc, $object->id);
+            $localtax1_tx = get_localtax($tva_tx, 1, $soc);
+            $localtax2_tx = get_localtax($tva_tx, 2, $soc);
+
+            $pu_ht = $object->price;
+            $pu_ttc = $object->price_ttc;
+            $price_base_type = $object->price_base_type;
+
+            // If multiprice
+            if ($conf->global->PRODUIT_MULTIPRICES && $soc->price_level) {
+                $pu_ht = $object->multiprices[$soc->price_level];
+                $pu_ttc = $object->multiprices_ttc[$soc->price_level];
+                $price_base_type = $object->multiprices_base_type[$soc->price_level];
+            } elseif (!empty($conf->global->PRODUIT_CUSTOMER_PRICES)) {
+                require_once DOL_DOCUMENT_ROOT . '/product/class/productcustomerprice.class.php';
+
+                $prodcustprice = new Productcustomerprice($db);
+
+                $filter = array('t.fk_product' => $object->id, 't.fk_soc' => $soc->id);
+
+                $result = $prodcustprice->fetch_all('', '', 0, 0, $filter);
+                if ($result) {
+                    if (count($prodcustprice->lines) > 0) {
+                        $pu_ht = price($prodcustprice->lines [0]->price);
+                        $pu_ttc = price($prodcustprice->lines [0]->price_ttc);
+                        $price_base_type = $prodcustprice->lines [0]->price_base_type;
+                        $prod->tva_tx = $prodcustprice->lines [0]->tva_tx;
+                    }
+                }
+            }
+
+            // On reevalue prix selon taux tva car taux tva transaction peut etre different
+            // de ceux du produit par defaut (par exemple si pays different entre vendeur et acheteur).
+            if ($tva_tx != $object->tva_tx) {
+                if ($price_base_type != 'HT') {
+                    $pu_ht = price2num($pu_ttc / (1 + ($tva_tx / 100)), 'MU');
+                } else {
+                    $pu_ttc = price2num($pu_ht * (1 + ($tva_tx / 100)), 'MU');
+                }
+            }
+
+            if (GETPOST('propalid') > 0) {
+                $result = $propal->addline(
+                    $desc,
+                    $pu_ht,
+                    GETPOST('qty'),
+                    $tva_tx,
+                    $localtax1_tx, // localtax1
+                    $localtax2_tx, // localtax2
+                    $object->id,
+                    GETPOST('remise_percent'),
+                    $price_base_type,
+                    $pu_ttc,
+                    0,
+                    0,
+                    -1,
+                    0,
+                    0,
+                    0,
+                    0,
+                    '',
+                    '',
+                    '',
+                    0,
+                    $object->fk_unit
+                );
+                if ($result > 0) {
+                    header("Location: " . DOL_URL_ROOT . "/comm/propal.php?id=" . $propal->id);
+                    return;
+                }
+
+                setEventMessage($langs->trans("ErrorUnknown") . ": $result", 'errors');
+            } elseif (GETPOST('commandeid') > 0) {
+                $result = $commande->addline(
+                    $desc,
+                    $pu_ht,
+                    GETPOST('qty'),
+                    $tva_tx,
+                    $localtax1_tx, // localtax1
+                    $localtax2_tx, // localtax2
+                    $object->id,
+                    GETPOST('remise_percent'),
+                    '',
+                    '',
+                    $price_base_type,
+                    $pu_ttc,
+                    '',
+                    '',
+                    0,
+                    -1,
+                    0,
+                    0,
+                    null,
+                    0,
+                    '',
+                    0,
+                    $object->fk_unit
+                );
+
+                if ($result > 0) {
+                    header("Location: " . DOL_URL_ROOT . "/commande/card.php?id=" . $commande->id);
+                    exit;
+                }
+            } elseif (GETPOST('factureid') > 0) {
+                $result = $facture->addline(
+                    $desc,
+                    $pu_ht,
+                    GETPOST('qty'),
+                    $tva_tx,
+                    $localtax1_tx,
+                    $localtax2_tx,
+                    $object->id,
+                    GETPOST('remise_percent'),
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    $price_base_type,
+                    $pu_ttc,
+                    Facture::TYPE_STANDARD,
+                    -1,
+                    0,
+                    '',
+                    0,
+                    0,
+                    null,
+                    0,
+                    '',
+                    0,
+                    100,
+                    '',
+                    $object->fk_unit
+                );
+
+                if ($result > 0) {
+                    header("Location: " . DOL_URL_ROOT . "/compta/facture.php?facid=" . $facture->id);
+                    exit;
+                }
             }
         }
+        else {
+            $action="";
+            setEventMessage($langs->trans("WarningSelectOneDocument"), 'warnings');
 
-        if (GETPOST('propalid') > 0)
-        {
-	        $result = $propal->addline(
-	            $desc,
-	            $pu_ht,
-	            GETPOST('qty'),
-	            $tva_tx,
-	            $localtax1_tx, // localtax1
-	            $localtax2_tx, // localtax2
-	            $object->id,
-	            GETPOST('remise_percent'),
-	            $price_base_type,
-	            $pu_ttc,
-		        0,
-		        0,
-		        -1,
-		        0,
-		        0,
-		        0,
-		        0,
-		        '',
-		        '',
-		        '',
-		        0,
-		        $object->fk_unit
-	        );
-	        if ($result > 0)
-	        {
-	            header("Location: ".DOL_URL_ROOT."/comm/propal.php?id=".$propal->id);
-	            return;
-	        }
-
-        	setEventMessage($langs->trans("ErrorUnknown").": $result", 'errors');
         }
-        elseif (GETPOST('commandeid') > 0)
-        {
-            $result =  $commande->addline(
-	            $desc,
-	            $pu_ht,
-	            GETPOST('qty'),
-	            $tva_tx,
-	            $localtax1_tx, // localtax1
-	            $localtax2_tx, // localtax2
-	            $object->id,
-	            GETPOST('remise_percent'),
-	            '',
-	            '',
-	            $price_base_type,
-	            $pu_ttc,
-		        '',
-		        '',
-		        0,
-		        -1,
-		        0,
-		        0,
-		        null,
-		        0,
-		        '',
-		        0,
-		        $object->fk_unit
-	        );
-
-	        if ($result > 0)
-	        {
-	            header("Location: ".DOL_URL_ROOT."/commande/card.php?id=".$commande->id);
-	            exit;
-	        }
-        }
-		elseif (GETPOST('factureid') > 0)
-		{
-	        $result = $facture->addline(
-	            $desc,
-	            $pu_ht,
-	            GETPOST('qty'),
-	            $tva_tx,
-	            $localtax1_tx,
-	            $localtax2_tx,
-	            $object->id,
-	            GETPOST('remise_percent'),
-	            '',
-	            '',
-	            '',
-	            '',
-	            '',
-	            $price_base_type,
-	            $pu_ttc,
-		        Facture::TYPE_STANDARD,
-		        -1,
-		        0,
-		        '',
-		        0,
-		        0,
-		        null,
-		        0,
-		        '',
-		        0,
-		        100,
-		        '',
-		        $object->fk_unit
-	        );
-
-	        if ($result > 0)
-	        {
-	            header("Location: ".DOL_URL_ROOT."/compta/facture.php?facid=".$facture->id);
-	            exit;
-	        }
-		}
     }
 }
 
@@ -878,7 +870,7 @@ else
         }
 
         // Description (used in invoice, propal...)
-        print '<tr><td valign="top">'.$langs->trans("Description").'</td><td colspan="3">';
+        print '<tr><td class="tdtop">'.$langs->trans("Description").'</td><td colspan="3">';
 
         $doleditor = new DolEditor('desc', GETPOST('desc'), '', 160, 'dolibarr_notes', '', false, true, $conf->global->FCKEDITOR_ENABLE_PRODUCTDESC, 4, 80);
         $doleditor->Create();
@@ -886,7 +878,7 @@ else
         print "</td></tr>";
 
         // Public URL
-        print '<tr><td valign="top">'.$langs->trans("PublicUrl").'</td><td colspan="3">';
+        print '<tr><td>'.$langs->trans("PublicUrl").'</td><td colspan="3">';
 		print '<input type="text" name="url" size="90" value="'.GETPOST('url').'">';
         print '</td></tr>';
 
@@ -952,6 +944,15 @@ else
             print '</td></tr>';
         }
 
+        // Units
+	    if($conf->global->PRODUCT_USE_UNITS)
+	    {
+		    print '<tr><td>'.$langs->trans('DefaultUnitToShow').'</td>';
+		    print '<td colspan="3">';
+		    print $form->selectUnits('','units');
+		    print '</td></tr>';
+	    }
+
         // Custom code
         if (empty($conf->global->PRODUCT_DISABLE_CUSTOM_INFO))
         {
@@ -972,7 +973,7 @@ else
         }
 
         // Note (private, no output on invoices, propales...)
-        print '<tr><td valign="top">'.$langs->trans("NoteNotVisibleOnBill").'</td><td colspan="3">';
+        print '<tr><td class="tdtop">'.$langs->trans("NoteNotVisibleOnBill").'</td><td colspan="3">';
 
         // We use dolibarr_details as type of DolEditor here, because we must not accept images as description is included into PDF and not accepted by TCPDF.
         $doleditor = new DolEditor('note', GETPOST('note'), '', 140, 'dolibarr_details', '', false, true, $conf->global->FCKEDITOR_ENABLE_PRODUCTDESC, 8, 70);
@@ -988,15 +989,6 @@ else
 			print "</td></tr>";
 		}
 
-	    // Units
-	    if($conf->global->PRODUCT_USE_UNITS)
-	    {
-		    print '<tr><td>'.$langs->trans('Unit').'</td>';
-		    print '<td colspan="3">';
-		    print $form->selectUnits("units");
-		    print '</td></tr>';
-	    }
-
         print '</table>';
 
         print '<br>';
@@ -1010,13 +1002,13 @@ else
 		{
             print '<table class="border" width="100%">';
 
-            // PRIX
+            // Price
             print '<tr><td>'.$langs->trans("SellingPrice").'</td>';
             print '<td><input name="price" size="10" value="'.$object->price.'">';
             print $form->selectPriceBaseType($object->price_base_type, "price_base_type");
             print '</td></tr>';
 
-            // MIN PRICE
+            // Min price
             print '<tr><td>'.$langs->trans("MinPrice").'</td>';
             print '<td><input name="price_min" size="10" value="'.$object->price_min.'">';
             print '</td></tr>';
@@ -1031,28 +1023,21 @@ else
             print '<br>';
         }
 
-        /*if (empty($conf->accounting->enabled) && empty($conf->comptabilite->enabled) && empty($conf->accountingexpert->enabled))
-        {
-            // Don't show accounting field when accounting id disabled.
-        }
-        else
-        {*/
-            print '<table class="border" width="100%">';
+        print '<table class="border" width="100%">';
 
-            // Accountancy_code_sell
-            print '<tr><td>'.$langs->trans("ProductAccountancySellCode").'</td>';
-            print '<td><input name="accountancy_code_sell" size="16" value="'.$object->accountancy_code_sell.'">';
-            print '</td></tr>';
+        // Accountancy_code_sell
+        print '<tr><td>'.$langs->trans("ProductAccountancySellCode").'</td>';
+        print '<td><input name="accountancy_code_sell" size="16" value="'.$object->accountancy_code_sell.'">';
+        print '</td></tr>';
 
-            // Accountancy_code_buy
-            print '<tr><td width="20%">'.$langs->trans("ProductAccountancyBuyCode").'</td>';
-            print '<td><input name="accountancy_code_buy" size="16" value="'.$object->accountancy_code_buy.'">';
-            print '</td></tr>';
+        // Accountancy_code_buy
+        print '<tr><td width="20%">'.$langs->trans("ProductAccountancyBuyCode").'</td>';
+        print '<td><input name="accountancy_code_buy" size="16" value="'.$object->accountancy_code_buy.'">';
+        print '</td></tr>';
 
-            print '</table>';
+        print '</table>';
 
-            print '<br>';
-        //}
+        print '<br>';
 
         dol_fiche_end();
 
@@ -1164,7 +1149,7 @@ else
 	        }
 
             // Description (used in invoice, propal...)
-            print '<tr><td valign="top">'.$langs->trans("Description").'</td><td colspan="3">';
+            print '<tr><td class="tdtop">'.$langs->trans("Description").'</td><td colspan="3">';
 
             // We use dolibarr_details as type of DolEditor here, because we must not accept images as description is included into PDF and not accepted by TCPDF.
             $doleditor = new DolEditor('desc', $object->description, '', 160, 'dolibarr_details', '', false, true, $conf->global->FCKEDITOR_ENABLE_PRODUCTDESC, 4, 80);
@@ -1174,7 +1159,7 @@ else
             print "\n";
 
             // Public Url
-            print '<tr><td valign="top">'.$langs->trans("PublicUrl").'</td><td colspan="3">';
+            print '<tr><td>'.$langs->trans("PublicUrl").'</td><td colspan="3">';
 			print '<input type="text" name="url" size="80" value="'.$object->url.'">';
             print '</td></tr>';
 
@@ -1223,7 +1208,7 @@ else
                 print '</td></tr>';
             }
             else
-            {
+			{
                 // Weight
                 print '<tr><td>'.$langs->trans("Weight").'</td><td colspan="3">';
                 print '<input name="weight" size="5" value="'.$object->weight.'"> ';
@@ -1245,6 +1230,14 @@ else
                 print $formproduct->select_measuring_units("volume_units", "volume", $object->volume_units);
                 print '</td></tr>';
             }
+        	// Units
+	        if($conf->global->PRODUCT_USE_UNITS)
+	        {
+		        print '<tr><td>'.$langs->trans('DefaultUnitToShow').'</td>';
+		        print '<td colspan="3">';
+		        print $form->selectUnits($object->fk_unit, 'units');
+		        print '</td></tr>';
+	        }
 
 	        // Custom code
     	    if (empty($conf->global->PRODUCT_DISABLE_CUSTOM_INFO))
@@ -1266,7 +1259,7 @@ else
             }
 
             // Note
-            print '<tr><td valign="top">'.$langs->trans("NoteNotVisibleOnBill").'</td><td colspan="3">';
+            print '<tr><td class="tdtop">'.$langs->trans("NoteNotVisibleOnBill").'</td><td colspan="3">';
 
             $doleditor = new DolEditor('note', $object->note, '', 140, 'dolibarr_notes', '', false, true, $conf->global->FCKEDITOR_ENABLE_PRODUCTDESC, 4, 80);
             $doleditor->Create();
@@ -1275,7 +1268,7 @@ else
 
 			if($conf->categorie->enabled) {
 				// Categories
-				print '<tr><td valign="top">'.$langs->trans("Categories").'</td><td colspan="3">';
+				print '<tr><td class="tdtop">'.$langs->trans("Categories").'</td><td colspan="3">';
 				$cate_arbo = $form->select_all_categories(Categorie::TYPE_PRODUCT, '', 'parent', 64, 0, 1);
 				$c = new Categorie($db);
 				$cats = $c->containing($object->id,Categorie::TYPE_PRODUCT);
@@ -1285,15 +1278,6 @@ else
 				print $form->multiselectarray('categories', $cate_arbo, $arrayselected, '', 0, '', 0, '100%');
 				print "</td></tr>";
 			}
-
-	        // Units
-	        if($conf->global->PRODUCT_USE_UNITS)
-	        {
-		        print '<tr><td>'.$langs->trans('Unit').'</td>';
-		        print '<td colspan="3">';
-		        print $form->selectUnits($object->fk_unit);
-		        print '</td></tr>';
-	        }
 
             print '</table>';
 
@@ -1436,22 +1420,15 @@ else
                 print '</td></tr>'."\n";
             }
 
-            /*if (empty($conf->accounting->enabled) && empty($conf->comptabilite->enabled) && empty($conf->accountingexpert->enabled))
-            {
-                // Don't show accounting field when accounting id disabled.
-            }
-            else
-            {*/
-                // Accountancy sell code
-                print '<tr><td>'.$form->editfieldkey("ProductAccountancySellCode",'accountancy_code_sell',$object->accountancy_code_sell,$object,$user->rights->produit->creer||$user->rights->service->creer,'string').'</td><td colspan="2">';
-                print $form->editfieldval("ProductAccountancySellCode",'accountancy_code_sell',$object->accountancy_code_sell,$object,$user->rights->produit->creer||$user->rights->service->creer,'string');
-                print '</td></tr>';
+            // Accountancy sell code
+            print '<tr><td>'.$form->editfieldkey("ProductAccountancySellCode",'accountancy_code_sell',$object->accountancy_code_sell,$object,$user->rights->produit->creer||$user->rights->service->creer,'string').'</td><td colspan="2">';
+            print $form->editfieldval("ProductAccountancySellCode",'accountancy_code_sell',$object->accountancy_code_sell,$object,$user->rights->produit->creer||$user->rights->service->creer,'string');
+            print '</td></tr>';
 
-                // Accountancy buy code
-                print '<tr><td>'.$form->editfieldkey("ProductAccountancyBuyCode",'accountancy_code_buy',$object->accountancy_code_buy,$object,$user->rights->produit->creer||$user->rights->service->creer,'string').'</td><td colspan="2">';
-                print $form->editfieldval("ProductAccountancyBuyCode",'accountancy_code_buy',$object->accountancy_code_buy,$object,$user->rights->produit->creer||$user->rights->service->creer,'string');
-                print '</td></tr>';
-            //}
+            // Accountancy buy code
+            print '<tr><td>'.$form->editfieldkey("ProductAccountancyBuyCode",'accountancy_code_buy',$object->accountancy_code_buy,$object,$user->rights->produit->creer||$user->rights->service->creer,'string').'</td><td colspan="2">';
+            print $form->editfieldval("ProductAccountancyBuyCode",'accountancy_code_buy',$object->accountancy_code_buy,$object,$user->rights->produit->creer||$user->rights->service->creer,'string');
+            print '</td></tr>';
 
             // Status (to sell)
             print '<tr><td>'.$langs->trans("Status").' ('.$langs->trans("Sell").')</td><td colspan="2">';
@@ -1483,10 +1460,10 @@ else
             }
 
             // Description
-            print '<tr><td valign="top">'.$langs->trans("Description").'</td><td colspan="2">'.(dol_textishtml($object->description)?$object->description:dol_nl2br($object->description,1,true)).'</td></tr>';
+            print '<tr><td class="tdtop">'.$langs->trans("Description").'</td><td colspan="2">'.(dol_textishtml($object->description)?$object->description:dol_nl2br($object->description,1,true)).'</td></tr>';
 
             // Public URL
-            print '<tr><td valign="top">'.$langs->trans("PublicUrl").'</td><td colspan="2">';
+            print '<tr><td>'.$langs->trans("PublicUrl").'</td><td colspan="2">';
 			print dol_print_url($object->url);
             print '</td></tr>';
 
@@ -1567,7 +1544,7 @@ else
 			{
 				$unit = $object->getLabelOfUnit();
 
-				print '<tr><td>'.$langs->trans('Unit').'</td><td>';
+				print '<tr><td>'.$langs->trans('DefaultUnitToShow').'</td><td>';
 				if ($unit !== '') {
 					print $langs->trans($unit);
 				}
@@ -1593,7 +1570,7 @@ else
 
             // Note
             print '<!-- show Note --> '."\n";
-            print '<tr><td valign="top">'.$langs->trans("Note").'</td><td colspan="'.(2+(($showphoto||$showbarcode)?1:0)).'">'.(dol_textishtml($object->note)?$object->note:dol_nl2br($object->note,1,true)).'</td></tr>'."\n";
+            print '<tr><td class="tdtop">'.$langs->trans("Note").'</td><td colspan="'.(2+(($showphoto||$showbarcode)?1:0)).'">'.(dol_textishtml($object->note)?$object->note:dol_nl2br($object->note,1,true)).'</td></tr>'."\n";
             print '<!-- End show Note --> '."\n";
 
 			// Categories
@@ -1616,11 +1593,25 @@ else
     }
 }
 
+// Load object modCodeProduct
+$module=(! empty($conf->global->PRODUCT_CODEPRODUCT_ADDON)?$conf->global->PRODUCT_CODEPRODUCT_ADDON:'mod_codeproduct_leopard');
+if (substr($module, 0, 16) == 'mod_codeproduct_' && substr($module, -3) == 'php')
+{
+    $module = substr($module, 0, dol_strlen($module)-4);
+}
+$result=dol_include_once('/core/modules/product/'.$module.'.php');
+if ($result > 0)
+{
+	$modCodeProduct = new $module();
+}
+
+$tmpcode='';
+if (! empty($modCodeProduct->code_auto)) $tmpcode=$modCodeProduct->getNextValue($object,$object->type);
 
 // Define confirmation messages
 $formquestionclone=array(
 	'text' => $langs->trans("ConfirmClone"),
-    array('type' => 'text', 'name' => 'clone_ref','label' => $langs->trans("NewRefForClone"), 'value' => $langs->trans("CopyOf").' '.$object->ref, 'size'=>24),
+    array('type' => 'text', 'name' => 'clone_ref','label' => $langs->trans("NewRefForClone"), 'value' => empty($tmpcode) ? $langs->trans("CopyOf").' '.$object->ref : $tmpcode, 'size'=>24),
     array('type' => 'checkbox', 'name' => 'clone_content','label' => $langs->trans("CloneContentProduct"), 'value' => 1),
     array('type' => 'checkbox', 'name' => 'clone_prices', 'label' => $langs->trans("ClonePricesProduct").' ('.$langs->trans("FeatureNotYetAvailable").')', 'value' => 0, 'disabled' => true),
     array('type' => 'checkbox', 'name' => 'clone_composition', 'label' => $langs->trans('CloneCompositionProduct'), 'value' => 1)
@@ -1800,6 +1791,8 @@ if ($object->id && ($action == '' || $action == 'view') && $object->status)
     	print '<input type="hidden" name="action" value="addin">';
 
 	    print load_fiche_titre($langs->trans("Add"),'','');
+		
+		dol_fiche_head('');
 
     	$html .= '<tr><td class="nowrap">'.$langs->trans("Quantity").' ';
     	$html .= '<input type="text" class="flat" name="qty" size="1" value="1"></td><td class="nowrap">'.$langs->trans("ReductionShort").'(%) ';
@@ -1809,6 +1802,8 @@ if ($object->id && ($action == '' || $action == 'view') && $object->status)
     	print '<table width="100%" class="border">';
         print $html;
         print '</table>';
+		
+		dol_fiche_end();
 
         print '<div class="center">';
         print '<input type="submit" class="button" value="'.$langs->trans("Add").'">';

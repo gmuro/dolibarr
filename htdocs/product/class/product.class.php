@@ -8,7 +8,7 @@
  * Copyright (C) 2012      Cedric Salvador      <csalvador@gpcsolutions.fr>
  * Copyright (C) 2013-2014	Cedric GROSS			<c.gross@kreiz-it.fr>
  * Copyright (C) 2013-2015	Marcos García			<marcosgdf@gmail.com>
- * Copyright (C) 2011-2014	Alexandre Spangaro		<alexandre.spangaro@gmail.com>
+ * Copyright (C) 2011-2014	Alexandre Spangaro		<aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2014		Henry Florian			<florian.henry@open-concept.pro>
  * Copyright (C) 2014		Philippe Grand			<philippe.grand@atoo-net.com>
  * Copyright (C) 2014		Ion agorria			<ion@agorria.com>
@@ -694,7 +694,7 @@ class Product extends CommonObject
 
 			$sql = "UPDATE ".MAIN_DB_PREFIX."product";
 			$sql.= " SET label = '" . $this->db->escape($this->label) ."'";
-			$sql.= ", ref = '" . $this->ref ."'";
+			$sql.= ", ref = '" . $this->db->escape($this->ref) ."'";
 			$sql.= ", ref_ext = ".(! empty($this->ref_ext)?"'".$this->db->escape($this->ref_ext)."'":"null");
 			$sql.= ", tva_tx = " . $this->tva_tx;
 			$sql.= ", recuperableonly = " . $this->tva_npr;
@@ -722,9 +722,9 @@ class Product extends CommonObject
 			$sql.= ", customcode = '" .        $this->db->escape($this->customcode) ."'";
 	        $sql.= ", fk_country = " . ($this->country_id > 0 ? $this->country_id : 'null');
 	        $sql.= ", note = ".(isset($this->note) ? "'" .$this->db->escape($this->note)."'" : 'null');
-			$sql.= ", duration = '" . $this->duration_value . $this->duration_unit ."'";
-			$sql.= ", accountancy_code_buy = '" . $this->accountancy_code_buy."'";
-			$sql.= ", accountancy_code_sell= '" . $this->accountancy_code_sell."'";
+			$sql.= ", duration = '" . $this->db->escape($this->duration_value . $this->duration_unit) ."'";
+			$sql.= ", accountancy_code_buy = '" . $this->db->escape($this->accountancy_code_buy)."'";
+			$sql.= ", accountancy_code_sell= '" . $this->db->escape($this->accountancy_code_sell)."'";
 			$sql.= ", desiredstock = " . ((isset($this->desiredstock) && $this->desiredstock != '') ? $this->desiredstock : "null");
 	        $sql.= ", fk_unit= " . (!$this->fk_unit ? 'NULL' : $this->fk_unit);
 			$sql.= " WHERE rowid = " . $id;
@@ -808,7 +808,8 @@ class Product extends CommonObject
 			{
 				if ($this->db->errno() == 'DB_ERROR_RECORD_ALREADY_EXISTS')
 				{
-					$this->error=$langs->trans("Error")." : ".$langs->trans("ErrorProductAlreadyExists",$this->ref);
+					if (empty($conf->barcode->enabled)) $this->error=$langs->trans("Error")." : ".$langs->trans("ErrorProductAlreadyExists",$this->ref);
+					else $this->error=$langs->trans("Error")." : ".$langs->trans("ErrorProductBarCodeAlreadyExists",$this->barcode);
 					$this->db->rollback();
 					return -1;
 				}
@@ -2315,7 +2316,7 @@ class Product extends CommonObject
 		$sql = "SELECT sum(d.qty), date_format(c.date_commande, '%Y%m')";
 		if ($mode == 'bynumber') $sql.= ", count(DISTINCT c.rowid)";
 		$sql.= " FROM ".MAIN_DB_PREFIX."commande_fournisseurdet as d, ".MAIN_DB_PREFIX."commande_fournisseur as c, ".MAIN_DB_PREFIX."societe as s";
-		if (!$user->rights->fournisseur->lire && !$socid) $sql .= ", ".MAIN_DB_PREFIX."societe_commerciaux as sc";
+		if (!$user->rights->societe->client->voir && !$socid) $sql .= ", ".MAIN_DB_PREFIX."societe_commerciaux as sc";
 		$sql.= " WHERE c.rowid = d.fk_commande";
 		$sql.= " AND d.fk_product =".$this->id;
 		$sql.= " AND c.fk_soc = s.rowid";
@@ -3256,7 +3257,7 @@ class Product extends CommonObject
 		$sql = "SELECT ps.reel, ps.fk_entrepot, ps.pmp, ps.rowid";
 		$sql.= " FROM ".MAIN_DB_PREFIX."product_stock as ps";
 		$sql.= ", ".MAIN_DB_PREFIX."entrepot as w";
-		$sql.= " WHERE w.entity IN (".getEntity('warehouse', 1).")";
+		$sql.= " WHERE w.entity IN (".getEntity('stock', 1).")";
 		$sql.= " AND w.rowid = ps.fk_entrepot";
 		$sql.= " AND ps.fk_product = ".$this->id;
 
@@ -3716,6 +3717,12 @@ class Product extends CommonObject
 		if (preg_match('/('.$this->regeximgext.')$/i',$filename,$regs))
 		{
 			$photo_vignette=preg_replace('/'.$regs[0].'/i','',$filename).'_small'.$regs[0];
+			if (file_exists(dol_osencode($dirthumb.$photo_vignette)))
+			{
+				dol_delete_file($dirthumb.$photo_vignette);
+			}
+
+			$photo_vignette=preg_replace('/'.$regs[0].'/i','',$filename).'_mini'.$regs[0];
 			if (file_exists(dol_osencode($dirthumb.$photo_vignette)))
 			{
 				dol_delete_file($dirthumb.$photo_vignette);

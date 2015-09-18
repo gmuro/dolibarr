@@ -225,6 +225,7 @@ class FormMail extends Form
     /**
      *	Get the form to input an email
      *  this->withfile: 0=No attaches files, 1=Show attached files, 2=Can add new attached files
+     *  this->param:	Contains more parameteres like email templates info
      *
      *	@param	string	$addfileaction		Name of action when posting file attachments
      *	@param	string	$removefileaction	Name of action when removing file attachments
@@ -252,7 +253,7 @@ class FormMail extends Form
         	return $hookmanager->resPrint;
         }
         else
-        {
+		{
         	$out='';
 
         	// Define list of attached files
@@ -276,18 +277,21 @@ class FormMail extends Form
 
         	// Get message template
 			$model_id=0;
-        	if (array_key_exists('models_id',$this->param)) {
+        	if (array_key_exists('models_id',$this->param))
+        	{
         		$model_id=$this->param["models_id"];
         	}
         	$arraydefaultmessage=$this->getEMailTemplate($this->db, $this->param["models"], $user, $outputlangs, $model_id);
+			//var_dump($arraydefaultmessage);
 
-        	$out.= "\n<!-- Debut form mail -->\n";
+        	$out.= "\n<!-- Begin form mail -->\n";
         	if ($this->withform == 1)
         	{
-        		$out.= '<form method="POST" name="mailform" id="mailform" enctype="multipart/form-data" action="'.$this->param["returnurl"].'">'."\n";
+        		$out.= '<form method="POST" name="mailform" id="mailform" enctype="multipart/form-data" action="'.$this->param["returnurl"].'#formmail">'."\n";
 				$out.= '<input style="display:none" type="submit" id="sendmail" name="sendmail">';
         		$out.= '<input type="hidden" name="token" value="'.$_SESSION['newtoken'].'" />';
         		$out.= '<input type="hidden" name="trackid" value="'.$this->trackid.'" />';
+        		$out.= '<a id="formmail" name="formmail"></a>';
         	}
         	foreach ($this->param as $key=>$value)
         	{
@@ -295,23 +299,26 @@ class FormMail extends Form
         	}
 
         	$result = $this->fetchAllEMailTemplate($this->param["models"], $user, $outputlangs);
-        	if ($result<0) {
+        	if ($result<0)
+        	{
         		setEventMessage($this->error,'errors');
         	}
         	$modelmail_array=array();
-        	foreach($this->lines_model as $line) {
+        	foreach($this->lines_model as $line)
+        	{
         		$modelmail_array[$line->id]=$line->label;
         	}
 
-        	if (count($modelmail_array)>0) {
-	        	$out.= '<table class="nobordernopadding" width="100%"><tr><td width="20%">'."\n";
-	        	$out.= $langs->trans('SelectMailModel').':'.$this->selectarray('modelmailselected', $modelmail_array,$model_id);
-	        	$out.= '</td>';
-	        	$out.= '<td width="5px">';
+        	// Zone to select its email template
+        	if (count($modelmail_array)>0)
+        	{
+	        	$out.= '<div style="padding: 3px 0 3px 0">'."\n";
+	        	$out.= $langs->trans('SelectMailModel').': '.$this->selectarray('modelmailselected', $modelmail_array, 0, 1);
 	        	if ($user->admin) $out.= info_admin($langs->trans("YouCanChangeValuesForThisListFromDictionarySetup"),1);
-	        	$out.= '</td>';
-	        	$out.= '<td><input class="flat" type="submit" value="'.$langs->trans('Valid').'" name="modelselected" id="modelselected"></td>';
-	        	$out.= '</tr></table>';
+	        	$out.= ' &nbsp; ';
+	        	$out.= '<input class="button" type="submit" value="'.$langs->trans('Valid').'" name="modelselected" id="modelselected">';
+	        	$out.= ' &nbsp; ';
+	        	$out.= '</div>';
         	}
 
 
@@ -326,7 +333,7 @@ class FormMail extends Form
         		{
         			$help.=$key.' -> '.$langs->trans($val).'<br>';
         		}
-        		$out.= $form->textwithpicto($langs->trans("EMailTestSubstitutionReplacedByGenericValues"),$help);
+        		$out.= $form->textwithpicto($langs->trans("EMailTestSubstitutionReplacedByGenericValues"), $help);
         		$out.= "</td></tr>\n";
         	}
 
@@ -565,7 +572,7 @@ class FormMail extends Form
         		}
         		else
         		{
-        			$out.= '<input type="text" size="60" id="subject" name="subject" value="'. (isset($_POST["subject"])?$_POST["subject"]:($defaulttopic?$defaulttopic:'')) .'" />';
+        			$out.= '<input type="text" size="60" id="subject" name="subject" value="'. ((isset($_POST["subject"]) && ! $_POST['modelselected'])?$_POST["subject"]:($defaulttopic?$defaulttopic:'')) .'" />';
         		}
         		$out.= "</td></tr>\n";
         	}
@@ -713,7 +720,7 @@ class FormMail extends Form
 
         	if ($this->withform == 1) $out.= '</form>'."\n";
 
-        	// Disable enter key if option MAIN_MAILFORM_DISABLE_ENTER is set
+        	// Disable enter key if option MAIN_MAILFORM_DISABLE_ENTERKEY is set
         	if (! empty($conf->global->MAIN_MAILFORM_DISABLE_ENTERKEY))
         	{
 	        	$out.= '<script type="text/javascript" language="javascript">';
@@ -729,7 +736,7 @@ class FormMail extends Form
 				$out.= '</script>';
         	}
 
-        	$out.= "<!-- Fin form mail -->\n";
+        	$out.= "<!-- End form mail -->\n";
 
         	return $out;
         }

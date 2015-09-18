@@ -1,6 +1,6 @@
 <?php
 /* Copyright (C) 2013-2014 Olivier Geffroy		<jeff@jeffinfo.com>
- * Copyright (C) 2013-2015 Alexandre Spangaro	<alexandre.spangaro@gmail.com>
+ * Copyright (C) 2013-2015 Alexandre Spangaro	<aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2014      Ari Elbaz (elarifr)	<github@accedinfo.com>
  * Copyright (C) 2014 	   Florian Henry        <florian.henry@open-concept.pro>
  *
@@ -196,6 +196,11 @@ class modAccounting extends DolibarrModules
 				"chaine",
 				"ER"
 		);
+		$this->const[23] = array(
+				"ACCOUNTING_EXPORT_FORMAT",
+				"chaine",
+				"csv"
+		);
 
 		// Tabs
 		$this->tabs = array();
@@ -272,35 +277,4 @@ class modAccounting extends DolibarrModules
 		$this->menus = array();
 		$r = 0;
 	}
-
-    /**
-	 *		Function called when module is enabled.
-	 *		The init function add constants, boxes, permissions and menus (defined in constructor) into Dolibarr database.
-	 *		It also creates data directories
-	 *
-     *      @param      string	$options    Options when enabling module ('', 'noboxes')
-	 *      @return     int             	1 if OK, 0 if KO
-     */
-    function init($options='')
-    {
-
-        $sql = array();
-
-        return $this->_init($sql,$options);
-    }
-
-    /**
-	 *		Function called when module is disabled.
-	 *      Remove from database constants, boxes and permissions from Dolibarr database.
-	 *		Data directories are not deleted
-	 *
-     *      @param      string	$options    Options when enabling module ('', 'noboxes')
-	 *      @return     int             	1 if OK, 0 if KO
-     */
-    function remove($options='')
-    {
-		$sql = array();
-
-		return $this->_remove($sql,$options);
-    }
 }

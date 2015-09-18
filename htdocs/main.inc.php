@@ -90,6 +90,7 @@ function test_sql_and_script_inject($val, $type)
         $sql_inj += preg_match('/union.+select/i', 	 $val);
         $sql_inj += preg_match('/into\s+(outfile|dumpfile)/i',  $val);
         $sql_inj += preg_match('/(\.\.%2f)+/i',		 $val);
+        $sql_inj += preg_match('/onerror=/i', 	     $val);
     }
     // For XSS Injection done by adding javascript with script
     // This is all cases a browser consider text is javascript:
@@ -224,7 +225,8 @@ if (isset($_SERVER["HTTP_USER_AGENT"]))
 
 
 // Force HTTPS if required ($conf->file->main_force_https is 0/1 or https dolibarr root url)
-if (! empty($conf->file->main_force_https))
+// $_SERVER["HTTPS"] is 'on' when link is https, otherwise $_SERVER["HTTPS"] is empty or 'off'
+if (! empty($conf->file->main_force_https) && (empty($_SERVER["HTTPS"]) || $_SERVER["HTTPS"] != 'on'))
 {
     $newurl='';
     if (is_numeric($conf->file->main_force_https))
@@ -238,21 +240,13 @@ if (! empty($conf->file->main_force_https))
         }
         else	// Check HTTPS environment variable (Apache/mod_ssl only)
         {
-            // $_SERVER["HTTPS"] is 'on' when link is https, otherwise $_SERVER["HTTPS"] is empty or 'off'
-            if (empty($_SERVER["HTTPS"]) || $_SERVER["HTTPS"] != 'on')		// If link is http
-            {
-                $newurl=preg_replace('/^http:/i','https:',DOL_MAIN_URL_ROOT).$_SERVER["REQUEST_URI"];
-            }
+            $newurl=preg_replace('/^http:/i','https:',DOL_MAIN_URL_ROOT).$_SERVER["REQUEST_URI"];
         }
     }
     else
     {
         // Check HTTPS environment variable (Apache/mod_ssl only)
-        // $_SERVER["HTTPS"] is 'on' when link is https, otherwise $_SERVER["HTTPS"] is empty or 'off'
-        if (empty($_SERVER["HTTPS"]) || $_SERVER["HTTPS"] != 'on')		// If link is http
-        {
-            $newurl=$conf->file->main_force_https.$_SERVER["REQUEST_URI"];
-        }
+        $newurl=$conf->file->main_force_https.$_SERVER["REQUEST_URI"];
     }
     // Start redirect
     if ($newurl)
@@ -611,7 +605,7 @@ if (! defined('NOLOGIN'))
             exit;
         }
         else
-        {
+		{
 	       // Initialize technical object to manage hooks of thirdparties. Note that conf->hooks_modules contains array array
 	       $hookmanager->initHooks(array('main'));
 
@@ -1019,11 +1013,10 @@ function top_htmlhead($head, $title='', $disablejs=0, $disablehead=0, $arrayofjs
             if (! empty($conf->global->MAIN_USE_JQUERY_DATATABLES) || (defined('REQUIRE_JQUERY_DATATABLES') && constant('REQUIRE_JQUERY_DATATABLES')))     // jQuery datatables
             {
                 //print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/css/jquery.dataTables.css'.($ext?'?'.$ext:'').'">'."\n";
-                print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/css/jquery.dataTables_jui.css'.($ext?'?'.$ext:'').'">'."\n";
-                print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extras/ColReorder/css/ColReorder.css'.($ext?'?'.$ext:'').'">'."\n";
-                print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extras/ColVis/css/ColVis.css'.($ext?'?'.$ext:'').'">'."\n";
-                //print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extras/ColVis/css/ColVisAlt.css'.($ext?'?'.$ext:'').'">'."\n";
-                print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extras/TableTools/css/TableTools.css'.($ext?'?'.$ext:'').'">'."\n";
+                print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/media/css/jquery.dataTables.min.css'.($ext?'?'.$ext:'').'">'."\n";
+                print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extensions/ColReorder/css/dataTables.colReorder.min.css'.($ext?'?'.$ext:'').'">'."\n";
+                print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extensions/ColVis/css/dataTables.colVis.min.css'.($ext?'?'.$ext:'').'">'."\n";
+                print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extensions/TableTools/css/dataTables.tableTools.min.css'.($ext?'?'.$ext:'').'">'."\n";
             }
             if (! empty($conf->global->MAIN_USE_JQUERY_MULTISELECT) || defined('REQUIRE_JQUERY_MULTISELECT'))     // jQuery plugin "mutiselect", "multiple-select", "select2"...
             {
@@ -1059,14 +1052,14 @@ function top_htmlhead($head, $title='', $disablejs=0, $disablehead=0, $arrayofjs
 	        	}
 	        }
         }
-        $themeparam='?lang='.$langs->defaultlang.'&theme='.$conf->theme.(GETPOST('optioncss')?'&optioncss='.GETPOST('optioncss','alpha',1):'').'&userid='.$user->id.'&entity='.$conf->entity;
-        $themeparam.=($ext?'&'.$ext:'');
-        if (! empty($_SESSION['dol_resetcache'])) $themeparam.='&dol_resetcache='.$_SESSION['dol_resetcache'];
-        if (GETPOST('dol_hide_topmenu'))           { $themeparam.='&dol_hide_topmenu='.GETPOST('dol_hide_topmenu','int'); }
-        if (GETPOST('dol_hide_leftmenu'))          { $themeparam.='&dol_hide_leftmenu='.GETPOST('dol_hide_leftmenu','int'); }
-        if (GETPOST('dol_optimize_smallscreen'))   { $themeparam.='&dol_optimize_smallscreen='.GETPOST('dol_optimize_smallscreen','int'); }
-        if (GETPOST('dol_no_mouse_hover'))         { $themeparam.='&dol_no_mouse_hover='.GETPOST('dol_no_mouse_hover','int'); }
-        if (GETPOST('dol_use_jmobile'))            { $themeparam.='&dol_use_jmobile='.GETPOST('dol_use_jmobile','int'); $conf->dol_use_jmobile=GETPOST('dol_use_jmobile','int'); }
+        $themeparam='?lang='.$langs->defaultlang.'&amp;theme='.$conf->theme.(GETPOST('optioncss')?'&amp;optioncss='.GETPOST('optioncss','alpha',1):'').'&amp;userid='.$user->id.'&amp;entity='.$conf->entity;
+        $themeparam.=($ext?'&amp;'.$ext:'');
+        if (! empty($_SESSION['dol_resetcache'])) $themeparam.='&amp;dol_resetcache='.$_SESSION['dol_resetcache'];
+        if (GETPOST('dol_hide_topmenu'))           { $themeparam.='&amp;dol_hide_topmenu='.GETPOST('dol_hide_topmenu','int'); }
+        if (GETPOST('dol_hide_leftmenu'))          { $themeparam.='&amp;dol_hide_leftmenu='.GETPOST('dol_hide_leftmenu','int'); }
+        if (GETPOST('dol_optimize_smallscreen'))   { $themeparam.='&amp;dol_optimize_smallscreen='.GETPOST('dol_optimize_smallscreen','int'); }
+        if (GETPOST('dol_no_mouse_hover'))         { $themeparam.='&amp;dol_no_mouse_hover='.GETPOST('dol_no_mouse_hover','int'); }
+        if (GETPOST('dol_use_jmobile'))            { $themeparam.='&amp;dol_use_jmobile='.GETPOST('dol_use_jmobile','int'); $conf->dol_use_jmobile=GETPOST('dol_use_jmobile','int'); }
         //print 'themepath='.$themepath.' themeparam='.$themeparam;exit;
         print '<link rel="stylesheet" type="text/css" href="'.$themepath.$themeparam.'">'."\n";
 	    if (! empty($conf->global->MAIN_FIX_FLASH_ON_CHROME)) print '<!-- Includes CSS that does not exists as workaround of flash bug of chrome -->'."\n".'<link rel="stylesheet" type="text/css" href="filethatdoesnotexiststosolvechromeflashbug">'."\n";
@@ -1115,7 +1108,7 @@ function top_htmlhead($head, $title='', $disablejs=0, $disablehead=0, $arrayofjs
             // jQuery Layout
             if (empty($conf->dol_use_jmobile) && ! empty($conf->global->MAIN_MENU_USE_JQUERY_LAYOUT) || defined('REQUIRE_JQUERY_LAYOUT'))
             {
-                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/layout/jquery.layout-latest.js'.($ext?'?'.$ext:'').'"></script>'."\n";
+                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/layout/jquery.layout.min.js'.($ext?'?'.$ext:'').'"></script>'."\n";
             }
             // jQuery jnotify
             if (empty($conf->global->MAIN_DISABLE_JQUERY_JNOTIFY) && ! defined('DISABLE_JQUERY_JNOTIFY'))
@@ -1182,10 +1175,10 @@ function top_htmlhead($head, $title='', $disablejs=0, $disablehead=0, $arrayofjs
             // jQuery DataTables
             if (! empty($conf->global->MAIN_USE_JQUERY_DATATABLES) || (defined('REQUIRE_JQUERY_DATATABLES') && constant('REQUIRE_JQUERY_DATATABLES')))
             {
-                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/js/jquery.dataTables.min.js'.($ext?'?'.$ext:'').'"></script>'."\n";
-                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extras/ColReorder/js/ColReorder.min.js'.($ext?'?'.$ext:'').'"></script>'."\n";
-                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extras/ColVis/js/ColVis.min.js'.($ext?'?'.$ext:'').'"></script>'."\n";
-                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extras/TableTools/js/TableTools.min.js'.($ext?'?'.$ext:'').'"></script>'."\n";
+                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/media/js/jquery.dataTables.min.js'.($ext?'?'.$ext:'').'"></script>'."\n";
+                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extensions/ColReorder/js/dataTables.colReorder.min.js'.($ext?'?'.$ext:'').'"></script>'."\n";
+                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extensions/ColVis/js/dataTables.colVis.min.js'.($ext?'?'.$ext:'').'"></script>'."\n";
+                print '<script type="text/javascript" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/datatables/extensions/TableTools/js/dataTables.tableTools.min.js'.($ext?'?'.$ext:'').'"></script>'."\n";
             }
             // jQuery Timepicker
             if (! empty($conf->global->MAIN_USE_JQUERY_TIMEPICKER) || defined('REQUIRE_JQUERY_TIMEPICKER'))
@@ -1229,7 +1222,7 @@ function top_htmlhead($head, $title='', $disablejs=0, $disablehead=0, $arrayofjs
             if (! empty($conf->fckeditor->enabled) && (empty($conf->global->FCKEDITOR_EDITORNAME) || $conf->global->FCKEDITOR_EDITORNAME == 'ckeditor'))
             {
                 print '<!-- Includes JS for CKEditor -->'."\n";
-                $pathckeditor=DOL_URL_ROOT.'/includes/ckeditor/';
+                $pathckeditor = DOL_URL_ROOT . '/includes/ckeditor/ckeditor/';
                 $jsckeditor='ckeditor.js';
                 if (constant('JS_CKEDITOR'))	// To use external ckeditor 4 js lib
                 {
@@ -1243,6 +1236,16 @@ function top_htmlhead($head, $title='', $disablejs=0, $disablehead=0, $arrayofjs
                 print '</script>'."\n";
                 print '<script type="text/javascript" src="'.$pathckeditor.$jsckeditor.($ext?'?'.$ext:'').'"></script>'."\n";
             }
+
+			// Raven.js for client-side Sentry logging support
+			if (array_key_exists('mod_syslog_sentry', $conf->loghandlers)) {
+				print '<!-- Includes Raven.js for Sentry -->' . "\n";
+				print '<script src="' . DOL_URL_ROOT . '/includes/raven-js/dist/raven.min.js"></script>' . "\n";
+				print '<script src="' . DOL_URL_ROOT . '/includes/raven-js/plugins/native.js"></script>' . "\n";
+				if (! defined('DISABLE_JQUERY')) {
+					print '<script src="' . DOL_URL_ROOT . '/includes/raven-js/plugins/jquery.js"></script>' . "\n";
+				}
+			}
 
             // Global js function
             print '<!-- Includes JS of Dolibarr -->'."\n";
@@ -1321,7 +1324,7 @@ function top_menu($head, $title='', $target='', $disablejs=0, $disablehead=0, $a
     // For backward compatibility with old modules
     if (empty($conf->headerdone)) top_htmlhead($head, $title, $disablejs, $disablehead, $arrayofjs, $arrayofcss);
 
-    print '<body id="mainbody">';
+    print '<body id="mainbody">' . "\n";
 
     if ($conf->use_javascript_ajax)
     {
@@ -1376,15 +1379,29 @@ function top_menu($head, $title='', $target='', $disablejs=0, $disablehead=0, $a
 						paneSelector: "#mainContent"
 					}
 				}
-    		</script>';
-        }
+			</script>' . "\n";
+		}
 
-        // Wrapper to show tooltips
-        print "\n".'<script type="text/javascript">
-                    jQuery(document).ready(function () {
-                       	jQuery(".classfortooltip").tipTip({maxWidth: "'.dol_size(600,'width').'px", edgeOffset: 10, delay: 50, fadeIn: 50, fadeOut: 50});
-                    });
-                </script>';
+		// Wrapper to show tooltips
+		print '<script type="text/javascript">
+	jQuery(document).ready(function () {
+		jQuery(".classfortooltip").tipTip({maxWidth: "'.dol_size(600,'width').'px", edgeOffset: 10, delay: 50, fadeIn: 50, fadeOut: 50});
+	});
+</script>' . "\n";
+
+		// Raven.js for client-side Sentry logging support
+		if (array_key_exists('mod_syslog_sentry', $conf->loghandlers) && ! empty($conf->global->SYSLOG_SENTRY_DSN)) {
+
+			// Filter out secret key
+			$dsn = parse_url($conf->global->SYSLOG_SENTRY_DSN);
+			$public_dsn = $dsn['scheme'] . '://' . $dsn['user'] .'@' . $dsn['host'] . $dsn['path'];
+
+			print '<script type="text/javascript">' . "\n";
+			print "Raven.config('" . $public_dsn . "').install()\n";
+			print "Raven.setUserContext({username: '" . $user->login . "'})\n";
+			print "Raven.setTagsContext({version: '" . DOL_VERSION . "'})\n";
+			print "</script>\n";
+		}
     }
 
     /*
@@ -1404,7 +1421,7 @@ function top_menu($head, $title='', $target='', $disablejs=0, $disablehead=0, $a
 	    $menumanager->showmenu('top');      // This contains a \n
 	    print "</div>\n";
 
-	    $form=new Form($db);
+	    //$form=new Form($db);
 
 	    // Define link to login card
 	    $appli='Dolibarr';
@@ -1472,11 +1489,11 @@ function top_menu($head, $title='', $target='', $disablejs=0, $disablehead=0, $a
 	        $text ='<a href="'.$_SERVER["PHP_SELF"].'?'.$qs.($qs?'&':'').'optioncss=print" target="_blank">';
 	        $text.= img_picto(":".$langs->trans("PrintContentArea"), 'printer.png', 'class="printer"');
 	        $text.='</a>';
-	        $toprightmenu.=$form->textwithtooltip('',$langs->trans("PrintContentArea"),2,1,$text,'login_block_elem',2);
+	        $toprightmenu.=Form::textwithtooltip('',$langs->trans("PrintContentArea"),2,1,$text,'login_block_elem',2);
 	    }
 
 		// Logout link
-	    $toprightmenu.=$form->textwithtooltip('',$logouthtmltext,2,1,$logouttext,'login_block_elem',2);
+	    $toprightmenu.=Form::textwithtooltip('',$logouthtmltext,2,1,$logouttext,'login_block_elem',2);
 
 	    $toprightmenu.='</div>';
 
@@ -1485,7 +1502,7 @@ function top_menu($head, $title='', $target='', $disablejs=0, $disablehead=0, $a
 	    print "</div>\n";
 		print '</div></div>';
 
-	    unset($form);
+	    //unset($form);
     }
 
     if (empty($conf->dol_use_jmobile) && ! empty($conf->use_javascript_ajax) && ! empty($conf->global->MAIN_MENU_USE_JQUERY_LAYOUT)) print "</div><!-- End top layout -->\n";

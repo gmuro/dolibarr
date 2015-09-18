@@ -1,8 +1,8 @@
 <?php
 /* Copyright (C) 2013-2014 Olivier Geffroy		<jeff@jeffinfo.com>
  * Copyright (C) 2013-2014 Florian Henry		<florian.henry@open-concept.pro>
- * Copyright (C) 2013-2015 Alexandre Spangaro	<alexandre.spangaro@gmail.com>
- * Copyright (C) 2014      Ari Elbaz (elarifr)	<github@accedinfo.com>
+ * Copyright (C) 2013-2015 Alexandre Spangaro	<aspangaro.dolibarr@gmail.com>
+ * Copyright (C) 2014-2015 Ari Elbaz (elarifr)	<github@accedinfo.com>
  * Copyright (C) 2014      Marcos García        <marcosgdf@gmail.com>
  * Copyright (C) 2014	   Juanjo Menent		<jmenent@2byte.es>
  * Copyright (C) 2015      Jean-François Ferry	<jfefe@aternatik.fr>
@@ -48,6 +48,8 @@ $action = GETPOST('action', 'alpha');
 // Other parameters ACCOUNTING_*
 $list = array (
 		'ACCOUNTING_LIMIT_LIST_VENTILATION',
+        'ACCOUNTING_LENGTH_DESCRIPTION',				// adjust size displayed for lines description for dol_trunc
+		'ACCOUNTING_LENGTH_DESCRIPTION_ACCOUNT',		// adjust size displayed for select account description for dol_trunc
 		'ACCOUNTING_LENGTH_GACCOUNT',
 		'ACCOUNTING_LENGTH_AACCOUNT',
 		'ACCOUNTING_ACCOUNT_CUSTOMER',
@@ -155,11 +157,12 @@ print_fiche_titre($langs->trans('ConfigAccountingExpert'),$linkback,'title_setup
 
 $head = admin_accounting_prepare_head($accounting);
 
-dol_fiche_head($head, 'general', $langs->trans("Configuration"), 0, 'cron');
 
 print '<form action="'.$_SERVER["PHP_SELF"].'" method="post">';
 print '<input type="hidden" name="token" value="'.$_SESSION['newtoken'].'">';
 print '<input type="hidden" name="action" value="update">';
+
+dol_fiche_head($head, 'general', $langs->trans("Configuration"), 0, 'cron');
 
 print '<table class="noborder" width="100%">';
 
@@ -287,10 +290,13 @@ if (! empty($conf->global->ACCOUNTING_LIST_SORT_VENTILATION_DONE)) {
 }
 print '</tr>';
 
-
 print "</table>\n";
 
-print '<br /><br /><div style="text-align:center"><input type="submit" class="button" value="'.$langs->trans('Modify').'" name="button"></div>';
+dol_fiche_end();
+
+print '<div class="center"><input type="submit" class="button" value="'.$langs->trans('Modify').'" name="button"></div>';
+
 print '</form>';
+
 llxFooter();
 $db->close();

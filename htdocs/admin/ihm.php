@@ -36,6 +36,7 @@ $langs->load("other");
 $langs->load("companies");
 $langs->load("products");
 $langs->load("members");
+$langs->load("projects");
 
 if (! $user->admin) accessforbidden();
 
@@ -141,7 +142,7 @@ if ($action == 'edit')	// Edit
     // Default language
     $var=!$var;
     print '<tr '.$bc[$var].'><td width="35%">'.$langs->trans("DefaultLanguage").'</td><td>';
-    print $formadmin->select_language($conf->global->MAIN_LANG_DEFAULT,'main_lang_default',1);
+    print $formadmin->select_language($conf->global->MAIN_LANG_DEFAULT, 'main_lang_default', 1, 0, 0, 0, 0, 'minwidth300');
     print '</td>';
 	print '<td width="20">&nbsp;</td>';
 	print '</tr>';

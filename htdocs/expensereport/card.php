@@ -1,8 +1,8 @@
 <?php
 /* Copyright (C) 2003      Rodolphe Quiedeville <rodolphe@quiedeville.org>
- * Copyright (C) 2004-2008 Laurent Destailleur  <eldy@users.sourceforge.net>
+ * Copyright (C) 2004-2015 Laurent Destailleur  <eldy@users.sourceforge.net>
  * Copyright (C) 2005-2009 Regis Houssin        <regis@dolibarr.fr>
- * Copyright (C) 2015      Alexandre Spangaro   <alexandre.spangaro@gmail.com>
+ * Copyright (C) 2015      Alexandre Spangaro   <aspangaro.dolibarr@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -166,7 +166,8 @@ if ($action == 'update' && $user->rights->expensereport->creer)
 	$object->fk_c_paiement = GETPOST('fk_c_paiement','int');
 	$object->note_public = GETPOST('note_public');
 	$object->note_private = GETPOST('note_private');
-
+	$object->fk_user_modif = $user->id;
+	
 	$result = $object->update($user);
 	if ($result > 0)
 	{
@@ -222,7 +223,7 @@ if ($action == "confirm_validate" && GETPOST("confirm") == "yes" && $id > 0 && $
 		if ($emailTo && $emailFrom)
 		{
 			$filename=array(); $filedir=array(); $mimetype=array();
-			
+
 			// SUBJECT
 			$subject = $langs->trans("ExpenseReportWaitingForApproval");
 
@@ -576,7 +577,7 @@ if ($action == "confirm_refuse" && GETPOST('confirm')=="yes" && $id > 0 && $user
 	}
 	else
 	{
-		setEventMessage($object->error, $object->errors);
+		setEventMessages($object->error, $object->errors, 'errors');
 	}
 }
 
@@ -708,7 +709,7 @@ if ($action == "confirm_brouillonner" && GETPOST('confirm')=="yes" && $id > 0 &&
 	}
 	else
 	{
-		setEventMessages($langs->transnoentitiesnoconv("NOT_AUTHOR"), '', 'errors');
+		setEventMessages("NOT_AUTHOR", '', 'errors');
 	}
 }
 
@@ -716,9 +717,9 @@ if ($action == 'set_paid' && $id > 0 && $user->rights->expensereport->to_paid)
 {
 	$object = new ExpenseReport($db);
 	$object->fetch($id);
-	
+
 	$result = $object->set_paid($id, $user);
-	
+
 	if ($result > 0)
 	{
 		// Define output language
@@ -777,7 +778,7 @@ if ($action == 'set_paid' && $id > 0 && $user->rights->expensereport->to_paid)
 			// SEND
 			$result=$mailfile->sendfile();
 			if ($result):
-			
+
 			// Retour
 			if($result):
 				Header("Location: ".$_SERVER["PHP_SELF"]."?id=".$id);
@@ -785,7 +786,7 @@ if ($action == 'set_paid' && $id > 0 && $user->rights->expensereport->to_paid)
 			else:
 				dol_print_error($db);
 			endif;
-			
+
 			else:
 			dol_print_error($db,$acct->error);
 			endif;
@@ -1115,7 +1116,10 @@ if ($action == 'create')
 	print '<td>';
 	$object = new ExpenseReport($db);
 	$include_users = $object->fetch_users_approver_expensereport();
-	$s=$form->select_dolusers((GETPOST('fk_user_validator')?GETPOST('fk_user_validator'):$conf->global->EXPENSEREPORT_DEFAULT_VALIDATOR), "fk_user_validator", 1, "", 0, $include_users);
+	$defaultselectuser=$user->fk_user;	// Will work only if supervisor has permission to approve so is inside include_users
+	if (! empty($conf->global->EXPENSEREPORT_DEFAULT_VALIDATOR)) $defaultselectuser=$conf->global->EXPENSEREPORT_DEFAULT_VALIDATOR;
+	if (GETPOST('fk_user_validator') > 0) $defaultselectuser=GETPOST('fk_user_validator');
+	$s=$form->select_dolusers($defaultselectuser, "fk_user_validator", 1, "", 0, $include_users);
 	print $form->textwithpicto($s, $langs->trans("AnyOtherInThisListCanValidate"));
 	print '</td>';
 	print '</tr>';
@@ -1315,30 +1319,35 @@ else
 			{
 				dol_fiche_head($head, 'card', $langs->trans("TripCard"), 0, 'trip');
 
-				if ($action == 'save'):
-				$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("SaveTrip"),$langs->trans("ConfirmSaveTrip"),"confirm_validate","","",1);
-				if ($ret == 'html') print '<br>';
-				endif;
+				if ($action == 'save')
+				{
+					$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("SaveTrip"),$langs->trans("ConfirmSaveTrip"),"confirm_validate","","",1);
+					if ($ret == 'html') print '<br>';
+				}
 
-				if ($action == 'save_from_refuse'):
-				$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("SaveTrip"),$langs->trans("ConfirmSaveTrip"),"confirm_save_from_refuse","","",1);
-				if ($ret == 'html') print '<br>';
-				endif;
+				if ($action == 'save_from_refuse')
+				{
+					$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("SaveTrip"),$langs->trans("ConfirmSaveTrip"),"confirm_save_from_refuse","","",1);
+					if ($ret == 'html') print '<br>';
+				}
 
-				if ($action == 'delete'):
-				$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("DeleteTrip"),$langs->trans("ConfirmDeleteTrip"),"confirm_delete","","",1);
-				if ($ret == 'html') print '<br>';
-				endif;
+				if ($action == 'delete')
+				{
+					$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("DeleteTrip"),$langs->trans("ConfirmDeleteTrip"),"confirm_delete","","",1);
+					if ($ret == 'html') print '<br>';
+				}
 
-				if ($action == 'validate'):
-				$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("ValideTrip"),$langs->trans("ConfirmValideTrip"),"confirm_approve","","",1);
-				if ($ret == 'html') print '<br>';
-				endif;
+				if ($action == 'validate')
+				{
+					$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("ValideTrip"),$langs->trans("ConfirmValideTrip"),"confirm_approve","","",1);
+					if ($ret == 'html') print '<br>';
+				}
 
-				if ($action == 'paid'):
-				$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("PaidTrip"),$langs->trans("ConfirmPaidTrip"),"confirm_paid","","",1);
-				if ($ret == 'html') print '<br>';
-				endif;
+				if ($action == 'paid')
+				{
+					$ret=$form->form_confirm($_SERVER["PHP_SELF"]."?id=".$id,$langs->trans("PaidTrip"),$langs->trans("ConfirmPaidTrip"),"confirm_paid","","",1);
+					if ($ret == 'html') print '<br>';
+				}
 
 				if ($action == 'cancel')
 				{
@@ -1392,7 +1401,7 @@ else
 				print '<td>'.$langs->trans("Statut").'</td>';
 				print '<td colspan="2">'.$object->getLibStatut(4).'</td>';
 				print '</tr>';
-				
+
 				print '<tr>';
 				print '<td>'.$langs->trans("NotePublic").'</td>';
 				print '<td colspan="2">'.$object->note_public.'</td>';
@@ -1404,7 +1413,14 @@ else
 				print '<tr>';
 				print '<td>'.$langs->trans("AmountHT").'</td>';
 				print '<td>'.price($object->total_ht).'</td>';
-				print '<td rowspan="7" valign="top">';
+				$rowspan = 5;
+				if ($object->fk_statut < 3) $rowspan++;
+				elseif($object->fk_statut == 4) $rowspan+=2;
+				else $rowspan+=2;
+				if ($object->fk_statut==99 || !empty($object->detail_refuse)) $rowspan+=2;
+				if($object->fk_statut==6) $rowspan+=2;
+
+				print '<td rowspan="'.$rowspan.'" valign="top">';
 				/*
 				 * Payments
 				 */
@@ -1442,8 +1458,8 @@ else
 						print "<tr ".$bc[$var]."><td>";
 						print '<a href="'.DOL_URL_ROOT.'/expensereport/payment/card.php?id='.$objp->rowid.'">'.img_object($langs->trans("Payment"),"payment").' '.$objp->rowid.'</a></td>';
 						print '<td>'.dol_print_date($db->jdate($objp->dp),'day')."</td>\n";
-							$labeltype=$langs->trans("PaymentType".$object->type_code)!=("PaymentType".$object->type_code)?$langs->trans("PaymentType".$object->type_code):$object->fk_typepayment;
-						print "<td>".$labeltype.' '.$object->num_payment."</td>\n";
+							$labeltype=$langs->trans("PaymentType".$objp->type_code)!=("PaymentType".$objp->type_code)?$langs->trans("PaymentType".$objp->type_code):$objp->fk_typepayment;
+						print "<td>".$labeltype.' '.$objp->num_payment."</td>\n";
 						print '<td align="right">'.price($objp->amount)."</td><td>&nbsp;".$langs->trans("Currency".$conf->currency)."</td>\n";
 						print "</tr>";
 						$totalpaid += $objp->amount;
@@ -1468,7 +1484,7 @@ else
 					dol_print_error($db);
 				}
 				print "</td>";
-	
+
 				print '</tr>';
 				print '<tr>';
 				print '<td>'.$langs->trans("AmountVAT").'</td>';
@@ -1498,7 +1514,7 @@ else
 				print '</tr>';
 
 				// User to inform
-				if($object->fk_statut<3)	// informed
+				if ($object->fk_statut < 3)	// informed
 				{
 					print '<tr>';
 					print '<td>'.$langs->trans("VALIDATOR").'</td>';
@@ -1512,7 +1528,7 @@ else
 					}
 					print '</td></tr>';
 				}
-				elseif($object->fk_statut==4)
+				elseif($object->fk_statut == 4)
 				{
 					print '<tr>';
 					print '<td>'.$langs->trans("CANCEL_USER").'</span></td>';
@@ -1536,7 +1552,7 @@ else
 				else
 				{
 					print '<tr>';
-					print '<td>'.$langs->trans("Approbator").'</td>';
+					print '<td>'.$langs->trans("ApprovedBy").'</td>';
 					print '<td>';
 					if ($object->fk_user_approve > 0)
 					{
@@ -1551,7 +1567,7 @@ else
 					print '</tr>';
 				}
 
-				if($object->fk_statut==99 || !empty($object->detail_refuse))
+				if ($object->fk_statut==99 || !empty($object->detail_refuse))
 				{
 					print '<tr>';
 					print '<td>'.$langs->trans("REFUSEUR").'</td>';
@@ -1570,6 +1586,7 @@ else
 
 				if($object->fk_statut==6)
 				{
+					/* TODO this fields are not yet filled
 					print '<tr>';
 					print '<td>'.$langs->trans("AUTHORPAIEMENT").'</td>';
 					print '<td>';
@@ -1581,8 +1598,9 @@ else
 					print '<td>'.$langs->trans("DATE_PAIEMENT").'</td>';
 					print '<td>'.$object->date_paiement.'</td></tr>';
 					print '</tr>';
+					*/
 				}
-				
+
 				print '</table>';
 
 				print '<br>';
@@ -1951,12 +1969,12 @@ if ($action != 'create' && $action != 'edit')
 			print '<a class="butActionDelete" href="'.$_SERVER["PHP_SELF"].'?action=delete&id='.$object->id.'">'.$langs->trans('Delete').'</a>';
 		}
 	}
-	
+
 	/* Si l'état est "A payer"
 	 *	ET user à droit de "to_paid"
 	 *	Afficher : "Annuler" / "Payer" / "Supprimer"
 	 */
-	if ($user->rights->expensereport->to_paid && $object->fk_statut == 5)
+	if ($user->rights->expensereport->to_paid && ! empty($conf->banque->enabled) && $object->fk_statut == 5)
 	{
 		// Pay
 		if ($remaintopay == 0)
@@ -1967,8 +1985,11 @@ if ($action != 'create' && $action != 'edit')
 		{
 			print '<div class="inline-block divButAction"><a class="butAction" href="'.DOL_URL_ROOT.'/expensereport/payment/payment.php?id=' . $object->id . '&amp;action=create">' . $langs->trans('DoPayment') . '</a></div>';
 		}
-		
-		if (round($remaintopay) == 0 && $object->paid == 0)
+	}
+	
+	if (($user->rights->expensereport->to_paid || empty($conf->banque->enabled)) && $object->fk_statut == 5)
+	{
+		if ((round($remaintopay) == 0 || empty($conf->banque->enabled)) && $object->paid == 0)
 		{
 			print '<div class="inline-block divButAction"><a class="butAction" href="' . $_SERVER["PHP_SELF"] . '?id='.$object->id.'&action=set_paid">'.$langs->trans("ClassifyPaid")."</a></div>";
 		}
@@ -1978,7 +1999,7 @@ if ($action != 'create' && $action != 'edit')
 		{
 			print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?action=cancel&id='.$object->id.'">'.$langs->trans('Cancel').'</a>';
 		}
-		
+
 		// Delete
 		if($user->rights->expensereport->supprimer)
 		{

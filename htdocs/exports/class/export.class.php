@@ -43,10 +43,10 @@ class Export
 	var $array_export_entities=array();         // Tableau des listes de champ+alias a exporter
 	var $array_export_dependencies=array();     // array of list of entities that must take care of the DISTINCT if a field is added into export
 	var $array_export_special=array();          // Tableau des operations speciales sur champ
-
+    var $array_export_examplevalues=array();    // array with examples
+    
 	// To store export modules
 	var $hexa;
-	var $hexafilter;
 	var $hexafiltervalue;
 	var $datatoexport;
 	var $model_name;
@@ -175,7 +175,9 @@ class Export
 									$this->array_export_dependencies[$i]=(! empty($module->export_dependencies_array[$r])?$module->export_dependencies_array[$r]:'');
 									// Tableau des operations speciales sur champ
 									$this->array_export_special[$i]=(! empty($module->export_special_array[$r])?$module->export_special_array[$r]:'');
-
+            						// Array of examples
+            						$this->array_export_examplevalues[$i]=$module->export_examplevalues_array[$r];
+									
 									// Requete sql du dataset
 									$this->array_export_sql_start[$i]=$module->export_sql_start[$r];
 									$this->array_export_sql_end[$i]=$module->export_sql_end[$r];
@@ -231,11 +233,11 @@ class Export
 		}
 		$sql.=$this->array_export_sql_end[$indice];
 
-		//construction du filtrage si le parametrage existe
+		// Add the filtering into sql if a filtering array is provided
 		if (is_array($array_filterValue) && !empty($array_filterValue))
 		{
 			$sqlWhere='';
-			// pour ne pas a gerer le nombre de condition
+			// Loop on each condition to add
 			foreach ($array_filterValue as $key => $value)
 			{
 				if ($value != '') $sqlWhere.=" and ".$this->build_filterQuery($this->array_export_TypeFields[$indice][$key], $key, $array_filterValue[$key]);
@@ -312,6 +314,8 @@ class Export
 				else
 					$szFilterQuery=" ".$NameField."='".$ValueField."'";
 				break;
+			default:
+			    dol_syslog("Error we try to forge an sql export request with a condition on a field with type '".$InfoFieldList[0]."' (defined into module descriptor) but this type is unknown/not supported. It looks like a bug into module descriptor.", LOG_ERROR);
 		}
 
 		return $szFilterQuery;
@@ -635,9 +639,6 @@ class Export
 		$this->db->begin();
 
 		$filter='';
-		if (! empty($this->hexafilter) && ! empty($this->hexafiltervalue)) {
-			$filter = json_encode(array('field' => $this->hexafilter, 'value' => $this->hexafiltervalue));
-		}
 
 		$sql = 'INSERT INTO '.MAIN_DB_PREFIX.'export_model (';
 		$sql.= 'label,';
@@ -646,12 +647,12 @@ class Export
 		$sql.= 'filter';
 		$sql.= ') VALUES (';
 		$sql.= "'".$this->db->escape($this->model_name)."',";
-		$sql.= "'".$this->datatoexport."',";
-		$sql.= "'".$this->hexa."',";
-		$sql.= (! empty($filter)?"'".$filter."'":"null");
+		$sql.= "'".$this->db->escape($this->datatoexport)."',";
+		$sql.= "'".$this->db->escape($this->hexa)."',";
+		$sql.= "'".$this->db->escape($this->hexafiltervalue)."'";
 		$sql.= ")";
 
-		dol_syslog("Export::create", LOG_DEBUG);
+		dol_syslog(get_class($this)."::create", LOG_DEBUG);
 		$resql=$this->db->query($sql);
 		if ($resql)
 		{
@@ -675,7 +676,7 @@ class Export
 	 */
 	function fetch($id)
 	{
-		$sql = 'SELECT em.rowid, em.field, em.label, em.type, em.filter';
+		$sql = 'SELECT em.rowid, em.label, em.type, em.field, em.filter';
 		$sql.= ' FROM '.MAIN_DB_PREFIX.'export_model as em';
 		$sql.= ' WHERE em.rowid = '.$id;
 
@@ -687,13 +688,11 @@ class Export
 			if ($obj)
 			{
 				$this->id				= $obj->rowid;
-				$this->hexa				= $obj->field;
 				$this->model_name		= $obj->label;
 				$this->datatoexport		= $obj->type;
-
-				$filter					= json_decode($obj->filter, true);
-				$this->hexafilter		= (isset($filter['field'])?$filter['field']:'');
-				$this->hexafiltervalue	= (isset($filter['value'])?$filter['value']:'');
+				
+				$this->hexa				= $obj->field;
+				$this->hexafiltervalue	= $obj->filter;
 
 				return 1;
 			}

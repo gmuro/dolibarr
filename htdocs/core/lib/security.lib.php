@@ -90,7 +90,7 @@ function dol_hash($chain,$type=0)
 	else if (! empty($conf->global->MAIN_SECURITY_HASH_ALGO) && $conf->global->MAIN_SECURITY_HASH_ALGO == 'sha1') return sha1($chain);
 	else if (! empty($conf->global->MAIN_SECURITY_HASH_ALGO) && $conf->global->MAIN_SECURITY_HASH_ALGO == 'sha1md5') return sha1(md5($chain));
 
-	// No enconding defined
+	// No particular enconding defined, use default
 	return md5($chain);
 }
 
@@ -351,7 +351,7 @@ function restrictedArea($user, $features, $objectid=0, $tableandshare='', $featu
  *
  * @return	bool		True if user has access, False otherwise
  */
-function checkUserAccessToObject($user, $featuresarray, $objectid=0, $tableandshare='', $feature2='', $dbt_keyfield='', $dbt_select='')
+function checkUserAccessToObject($user, $featuresarray, $objectid=0, $tableandshare='', $feature2='', $dbt_keyfield='', $dbt_select='rowid')
 {
 	global $db, $conf;
 
@@ -416,32 +416,32 @@ function checkUserAccessToObject($user, $featuresarray, $objectid=0, $tableandsh
 				$sql.= " AND s.entity IN (".getEntity($sharedelement, 1).")";
 			}
 		}
-		else if (in_array($feature,$checkother))
+		else if (in_array($feature,$checkother))	// Test on entity and link to societe. Allowed if link is empty (Ex: contacts...).
 		{
 			// If external user: Check permission for external users
 			if ($user->societe_id > 0)
 			{
-				$sql = "SELECT dbt.rowid";
+				$sql = "SELECT dbt.".$dbt_select;
 				$sql.= " FROM ".MAIN_DB_PREFIX.$dbtablename." as dbt";
-				$sql.= " WHERE dbt.rowid = ".$objectid;
+				$sql.= " WHERE dbt.".$dbt_select." = ".$objectid;
 				$sql.= " AND dbt.fk_soc = ".$user->societe_id;
 			}
 			// If internal user: Check permission for internal users that are restricted on their objects
 			else if (! empty($conf->societe->enabled) && ($user->rights->societe->lire && ! $user->rights->societe->client->voir))
 			{
-				$sql = "SELECT dbt.rowid";
+				$sql = "SELECT dbt.".$dbt_select;
 				$sql.= " FROM ".MAIN_DB_PREFIX.$dbtablename." as dbt";
 				$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."societe_commerciaux as sc ON dbt.fk_soc = sc.fk_soc AND sc.fk_user = '".$user->id."'";
-				$sql.= " WHERE dbt.rowid = ".$objectid;
+				$sql.= " WHERE dbt.".$dbt_select." = ".$objectid;
 				$sql.= " AND (dbt.fk_soc IS NULL OR sc.fk_soc IS NOT NULL)";	// Contact not linked to a company or to a company of user
 				$sql.= " AND dbt.entity IN (".getEntity($sharedelement, 1).")";
 			}
 			// If multicompany and internal users with all permissions, check user is in correct entity
 			else if (! empty($conf->multicompany->enabled))
 			{
-				$sql = "SELECT dbt.rowid";
+				$sql = "SELECT dbt.".$dbt_select;
 				$sql.= " FROM ".MAIN_DB_PREFIX.$dbtablename." as dbt";
-				$sql.= " WHERE dbt.rowid = ".$objectid;
+				$sql.= " WHERE dbt.".$dbt_select." = ".$objectid;
 				$sql.= " AND dbt.entity IN (".getEntity($sharedelement, 1).")";
 			}
 		}

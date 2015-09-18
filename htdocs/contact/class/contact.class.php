@@ -6,7 +6,7 @@
  * Copyright (C) 2007      Franky Van Liedekerke       <franky.van.liedekerker@telenet.be>
  * Copyright (C) 2008      Raphael Bertrand (Resultic) <raphael.bertrand@resultic.fr>
  * Copyright (C) 2013      Florian Henry		  	       <florian.henry@open-concept.pro>
- * Copyright (C) 2013      Alexandre Spangaro 	       <alexandre.spangaro@gmail.com>
+ * Copyright (C) 2013      Alexandre Spangaro 	       <aspangaro.dolibarr@gmail.com>
  * Copyright (C) 2013      Juanjo Menent	 	       <jmenent@2byte.es>
  * Copyright (C) 2015      Marcos García               <marcosgdf@gmail.com>
  *
@@ -168,9 +168,9 @@ class Contact extends CommonObject
 		$sql.= " ".($user->id > 0 ? "'".$user->id."'":"null").",";
 		$sql.= " ".$this->priv.",";
 		$sql.= " ".$this->statut.",";
-        $sql.= " ".(! empty($this->canvas)?"'".$this->canvas."'":"null").",";
+        $sql.= " ".(! empty($this->canvas)?"'".$this->db->escape($this->canvas)."'":"null").",";
         $sql.= " ".$conf->entity.",";
-	$sql.= "'".$this->db->escape($this->ref_ext)."',";
+        $sql.= "'".$this->db->escape($this->ref_ext)."',";
         $sql.= " ".(! empty($this->import_key)?"'".$this->import_key."'":"null");
 		$sql.= ")";
 
@@ -516,8 +516,15 @@ class Contact extends CommonObject
 	 */
 	function fetch($id, $user=0, $ref_ext='')
 	{
-		dol_syslog(get_class($this)."::fetch ".$this->error, LOG_ERR);
 		global $langs;
+
+		dol_syslog(get_class($this)."::fetch id=".$id, LOG_DEBUG);
+
+		if (empty($id) && empty($ref_ext))
+		{
+			$this->error='BadParameter';
+			return -1;
+		}
 
 		$langs->load("companies");
 
@@ -541,7 +548,6 @@ class Contact extends CommonObject
 		if ($id) $sql.= " WHERE c.rowid = ". $id;
 		elseif ($ref_ext) $sql .= " WHERE c.ref_ext = '".$this->db->escape($ref_ext)."'";
 
-		dol_syslog(get_class($this)."::fetch", LOG_DEBUG);
 		$resql=$this->db->query($sql);
 		if ($resql)
 		{
@@ -568,7 +574,7 @@ class Contact extends CommonObject
 
 				$this->country_id 		= $obj->country_id;
 				$this->country_code		= $obj->country_id?$obj->country_code:'';
-				$this->country			= ($obj->country_id > 0)?$langs->transnoentitiesnoconv("Country".$obj->country_code):'';
+				$this->country			= $obj->country_id?($langs->trans('Country'.$obj->country_code)!='Country'.$obj->country_code?$langs->transnoentities('Country'.$obj->country_code):$obj->country):'';
 
 				$this->socid			= $obj->fk_soc;
 				$this->socname			= $obj->socname;

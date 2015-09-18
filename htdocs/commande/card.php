@@ -32,6 +32,7 @@
  * \ingroup commande
  * \brief Page to show customer order
  */
+
 require '../main.inc.php';
 require_once DOL_DOCUMENT_ROOT . '/core/class/html.formfile.class.php';
 require_once DOL_DOCUMENT_ROOT . '/core/class/html.formorder.class.php';
@@ -92,8 +93,9 @@ include DOL_DOCUMENT_ROOT.'/core/actions_fetchobject.inc.php';  // Must be inclu
 // Initialize technical object to manage hooks of thirdparties. Note that conf->hooks_modules contains array array
 $hookmanager->initHooks(array('ordercard','globalcard'));
 
-$permissionnote = $user->rights->commande->creer; // Used by the include of actions_setnotes.inc.php
-$permissionedit = $user->rights->commande->creer; // Used by the include of actions_lineupdown.inc.php
+$permissionnote = $user->rights->commande->creer; 		// Used by the include of actions_setnotes.inc.php
+$permissiondellink = $user->rights->commande->creer; 	// Used by the include of actions_dellink.inc.php
+$permissionedit = $user->rights->commande->creer; 		// Used by the include of actions_lineupdown.inc.php
 
 
 
@@ -110,6 +112,8 @@ if (empty($reshook))
 	if ($cancel) $action='';
 
 	include DOL_DOCUMENT_ROOT.'/core/actions_setnotes.inc.php'; 	// Must be include, not include_once
+
+	include DOL_DOCUMENT_ROOT.'/core/actions_dellink.inc.php';		// Must be include, not include_once
 
 	include DOL_DOCUMENT_ROOT.'/core/actions_lineupdown.inc.php';	// Must be include, not include_once
 
@@ -1161,8 +1165,10 @@ if (empty($reshook))
 
 
 
-	if (! $error && ! empty($conf->global->MAIN_DISABLE_CONTACTS_TAB) && $user->rights->commande->creer) {
-		if ($action == 'addcontact') {
+	if (! $error && ! empty($conf->global->MAIN_DISABLE_CONTACTS_TAB) && $user->rights->commande->creer) 
+	{
+		if ($action == 'addcontact') 
+		{
 			if ($object->id > 0) {
 				$contactid = (GETPOST('userid') ? GETPOST('userid') : GETPOST('contactid'));
 				$result = $object->add_contact($contactid, GETPOST('type'), GETPOST('source'));
@@ -1182,7 +1188,8 @@ if (empty($reshook))
 		}
 
 		// bascule du statut d'un contact
-		else if ($action == 'swapstatut') {
+		else if ($action == 'swapstatut') 
+		{
 			if ($object->id > 0) {
 				$result = $object->swapContactStatus(GETPOST('ligne'));
 			} else {
@@ -1191,7 +1198,8 @@ if (empty($reshook))
 		}
 
 		// Efface un contact
-		else if ($action == 'deletecontact') {
+		else if ($action == 'deletecontact') 
+		{
 			$result = $object->delete_contact($lineid);
 
 			if ($result >= 0) {
@@ -1371,7 +1379,6 @@ if ($action == 'create' && $user->rights->commande->creer)
 	}
 	// Date
 	print '<tr><td class="fieldrequired">' . $langs->trans('Date') . '</td><td colspan="2">';
-	//$form->select_date($dateorder, 're', '', '', '', "crea_commande", 1, 1);
 	$form->select_date('', 're', '', '', '', "crea_commande", 1, 1);			// Always autofill date with current date
 	print '</td></tr>';
 
@@ -1430,7 +1437,7 @@ if ($action == 'create' && $user->rights->commande->creer)
 		print '<tr>';
 		print '<td>' . $langs->trans("Project") . '</td><td colspan="2">';
 		$numprojet = $formproject->select_projects($soc->id, $projectid, 'projectid', 0);
-		print ' &nbsp; <a href="../projet/card.php?socid=' . $soc->id . '&action=create&status=1&backtopage='.urlencode($_SERVER["PHP_SELF"].'?action=create&socid='.$soc->id).'">' . $langs->trans("AddProject") . '</a>';
+		print ' &nbsp; <a href="'.DOL_URL_ROOT.'/projet/card.php?socid=' . $soc->id . '&action=create&status=1&backtopage='.urlencode($_SERVER["PHP_SELF"].'?action=create&socid='.$soc->id).'">' . $langs->trans("AddProject") . '</a>';
 		print '</td>';
 		print '</tr>';
 	}
@@ -1950,7 +1957,7 @@ if ($action == 'create' && $user->rights->commande->creer)
 		print '<table class="nobordernopadding" width="100%"><tr><td>';
 		print $langs->trans('AvailabilityPeriod');
 		print '</td>';
-		if ($action != 'editavailability' && $object->brouillon)
+		if ($action != 'editavailability')
 			print '<td align="right"><a href="' . $_SERVER["PHP_SELF"] . '?action=editavailability&amp;id=' . $object->id . '">' . img_edit($langs->trans('SetAvailability'), 1) . '</a></td>';
 		print '</tr></table>';
 		print '</td><td colspan="3">';
@@ -1966,7 +1973,7 @@ if ($action == 'create' && $user->rights->commande->creer)
 		print '<table class="nobordernopadding" width="100%"><tr><td>';
 		print $langs->trans('Source');
 		print '</td>';
-		if ($action != 'editdemandreason' && ! empty($object->brouillon))
+		if ($action != 'editdemandreason')
 			print '<td align="right"><a href="' . $_SERVER["PHP_SELF"] . '?action=editdemandreason&amp;id=' . $object->id . '">' . img_edit($langs->trans('SetDemandReason'), 1) . '</a></td>';
 		print '</tr></table>';
 		print '</td><td colspan="3">';
@@ -1975,14 +1982,15 @@ if ($action == 'create' && $user->rights->commande->creer)
 		} else {
 			$form->formInputReason($_SERVER['PHP_SELF'] . '?id=' . $object->id, $object->demand_reason_id, 'none');
 		}
-		// Removed because using dictionary is an admin feature, not a user feature. Ther is already the "star" to show info to admin users.
+		// Removed because using dictionary is an admin feature, not a user feature. There is already the "star" to show info to admin users.
 		// This is to avoid too heavy screens and have an uniform look and feel for all screens.
 		// print '</td><td>';
 		// print '<a href="'.DOL_URL_ROOT.'/admin/dict.php?id=22&origin=order&originid='.$object->id.'">'.$langs->trans("DictionarySource").'</a>';
 		print '</td></tr>';
 
 		// Project
-		if (! empty($conf->projet->enabled)) {
+		if (! empty($conf->projet->enabled))
+		{
 			$langs->load('projects');
 			print '<tr><td height="10">';
 			print '<table class="nobordernopadding" width="100%"><tr><td>';
@@ -2001,7 +2009,8 @@ if ($action == 'create' && $user->rights->commande->creer)
 			print '</td></tr>';
 		}
 
-		if ($soc->outstanding_limit) {
+		if ($soc->outstanding_limit)
+		{
 			// Outstanding Bill
 			print '<tr><td>';
 			print $langs->trans('OutstandingBill');
@@ -2355,15 +2364,18 @@ if ($action == 'create' && $user->rights->commande->creer)
 			if (! $file || ! is_readable($file)) {
 				$result = $object->generateDocument(GETPOST('model') ? GETPOST('model') : $object->modelpdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
 				if ($result <= 0) {
-					dol_print_error($db, $result);
+					dol_print_error($db, $object->error, $object->errors);
 					exit();
 				}
 				$fileparams = dol_most_recent_file($conf->commande->dir_output . '/' . $ref, preg_quote($ref, '/').'[^\-]+');
 				$file = $fileparams['fullname'];
 			}
 
+			print '<div class="clearboth"></div>';
 			print '<br>';
-			print_titre($langs->trans('SendOrderByMail'));
+			print_fiche_titre($langs->trans('SendOrderByMail'));
+
+			dol_fiche_head('');
 
 			// Cree l'objet formulaire mail
 			include_once DOL_DOCUMENT_ROOT . '/core/class/html.formmail.class.php';
@@ -2402,8 +2414,10 @@ if ($action == 'create' && $user->rights->commande->creer)
 			$contactarr = array();
 			$contactarr = $object->liste_contact(- 1, 'external');
 
-			if (is_array($contactarr) && count($contactarr) > 0) {
-				foreach ($contactarr as $contact) {
+			if (is_array($contactarr) && count($contactarr) > 0)
+			{
+				foreach ($contactarr as $contact)
+				{
 					if ($contact['libelle'] == $langs->trans('TypeContact_commande_external_CUSTOMER')) {	// TODO Use code and not label
 						$contactstatic = new Contact($db);
 						$contactstatic->fetch($contact ['id']);
@@ -2432,7 +2446,7 @@ if ($action == 'create' && $user->rights->commande->creer)
 			// Show form
 			print $formmail->get_form();
 
-			print '<br>';
+			dol_fiche_end();
 		}
 	}
 }

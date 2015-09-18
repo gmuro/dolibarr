@@ -303,13 +303,14 @@ class FormOther
      * Return select list for categories (to use in form search selectors)
      *
      * @param	int		$type			Type of categories (0=product, 1=suppliers, 2=customers, 3=members)
-     * @param  integer	$selected     	Preselected value
-     * @param  string	$htmlname      	Name of combo list
+     * @param   integer	$selected     	Preselected value
+     * @param   string	$htmlname      	Name of combo list
      * @param	int		$nocateg		Show also an entry "Not categorized"
+     * @param   int     $showempty      Add also an empty line
      * @return string		        	Html combo list code
      * @see	select_all_categories
      */
-    function select_categories($type,$selected=0,$htmlname='search_categ',$nocateg=0)
+    function select_categories($type,$selected=0,$htmlname='search_categ',$nocateg=0,$showempty=1)
     {
         global $conf, $langs;
         require_once DOL_DOCUMENT_ROOT.'/categories/class/categorie.class.php';
@@ -331,7 +332,7 @@ class FormOther
 
         // Print a select with each of them
         $moreforfilter.='<select class="flat minwidth100" id="select_categ_'.$htmlname.'" name="'.$htmlname.'"'.$nodatarole.'>';
-        $moreforfilter.='<option value="">&nbsp;</option>';	// Should use -1 to say nothing
+        if ($showempty) $moreforfilter.='<option value="0">&nbsp;</option>';	// Should use -1 to say nothing
 
         if (is_array($tab_categs))
         {
@@ -361,9 +362,10 @@ class FormOther
      *  @param  User	$user           Object user
      *  @param	int		$showstatus		0=show user status only if status is disabled, 1=always show user status into label, -1=never show user status
      *  @param	int		$showempty		1=show also an empty value
+     *  @param	string	$morecss		More CSS
      *  @return string					Html combo list code
      */
-    function select_salesrepresentatives($selected,$htmlname,$user,$showstatus=0,$showempty=1)
+    function select_salesrepresentatives($selected,$htmlname,$user,$showstatus=0,$showempty=1,$morecss='')
     {
         global $conf,$langs;
         $langs->load('users');
@@ -383,7 +385,7 @@ class FormOther
             }
         }
         // Select each sales and print them in a select input
-        $out.='<select class="flat" id="'.$htmlname.'" name="'.$htmlname.'"'.$nodatarole.'>';
+        $out.='<select class="flat'.($morecss?' '.$morecss:'').'" id="'.$htmlname.'" name="'.$htmlname.'"'.$nodatarole.'>';
         if ($showempty) $out.='<option value="0">&nbsp;</option>';
 
         // Get list of users allowed to be viewed
@@ -876,7 +878,7 @@ class FormOther
         $min_year = $currentyear-$min_year;
         if(empty($selected) && empty($useempty)) $selected = $currentyear;
 
-        $out.= '<select class="flat" id="' . $htmlname . '" name="' . $htmlname . '"'.$option.' >';
+        $out.= '<select class="flat" placeholder="aa" id="' . $htmlname . '" name="' . $htmlname . '"'.$option.' >';
         if($useempty)
         {
         	$selected_html='';

@@ -6,7 +6,7 @@
  * Copyright (C) 2005-2010	Regis Houssin			<regis.houssin@capnetworks.com>
  * Copyright (C) 2013		Florian Henry			<florian.henry@open-concept.pro>
  * Copyright (C) 2015		Marcos García			<marcosgdf@gmail.com>
- * Copyright (C) 2015		Alexandre Spangaro		<alexandre.spangaro@gmail.com>
+ * Copyright (C) 2015		Alexandre Spangaro		<aspangaro.dolibarr@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -122,8 +122,10 @@ class Account extends CommonObject
      */
     function canBeConciliated()
     {
+        global $conf;
+
         if (empty($this->rappro)) return -1;
-        if ($this->courant == 2) return -2;
+        if ($this->courant == 2 && empty($conf->global->BANK_CAN_RECONCILIATE_CASHACCOUNT)) return -2;
         if ($this->clos) return -3;
         return 1;
     }
@@ -1086,8 +1088,8 @@ class Account extends CommonObject
     {
         $country_code=$this->getCountryCode();
 
-        if (in_array($country_code,array('CH','DE','FR','ES','GA','IT'))) return 1; // France, Spain, Gabon
-        if (in_array($country_code,array('AU','BE','CA','DK','GR','GB','ID','IE','IR','KR','NL','NZ','UK','US'))) return 2;      // Australia, Great Britain...
+        if (in_array($country_code,array('CH','FR','ES','GA','IT'))) return 1; // France, Spain, Gabon, ...
+        if (in_array($country_code,array('AU','BE','CA','DE','DK','GR','GB','ID','IE','IR','KR','NL','NZ','UK','US'))) return 2;      // Australia, England...
         return 0;
     }
 
@@ -1146,6 +1148,10 @@ class AccountLine extends CommonObject
     var $ref;
     var $datec;
     var $dateo;
+
+    /**
+     * Value date
+     */
     var $datev;
     var $amount;
     var $label;
@@ -1244,7 +1250,6 @@ class AccountLine extends CommonObject
         }
         else
         {
-            dol_print_error($this->db);
             return -1;
         }
     }
@@ -1263,7 +1268,7 @@ class AccountLine extends CommonObject
         if ($this->rappro)
         {
             // Protection to avoid any delete of consolidated lines
-            $this->error="DeleteNotPossibleLineIsConsolidated";
+            $this->error="ErrorDeleteNotPossibleLineIsConsolidated";
             return -1;
         }
 
